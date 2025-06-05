@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { Home, FileText, MapPin, Brain, User } from 'lucide-react-native';
+import { Home, Search, MapPin, Bell, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
@@ -32,17 +32,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Dashboard',
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-          headerTitle: 'Rebuild',
         }}
       />
       <Tabs.Screen
-        name="resources"
+        name="cases"
         options={{
-          title: 'Resources',
-          tabBarIcon: ({ color, size }) => <FileText size={size} color={color} />,
-          headerTitle: 'Resource Center',
+          title: 'Cases',
+          tabBarIcon: ({ color, size }) => <Search size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -50,15 +48,13 @@ export default function TabLayout() {
         options={{
           title: 'Map',
           tabBarIcon: ({ color, size }) => <MapPin size={size} color={color} />,
-          headerTitle: 'Find Help',
         }}
       />
       <Tabs.Screen
-        name="wellness"
+        name="alerts"
         options={{
-          title: 'Wellness',
-          tabBarIcon: ({ color, size }) => <Brain size={size} color={color} />,
-          headerTitle: 'Mental Health',
+          title: 'Alerts',
+          tabBarIcon: ({ color, size }) => <Bell size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -66,7 +62,6 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
-          headerTitle: 'My Profile',
         }}
       />
     </Tabs>
