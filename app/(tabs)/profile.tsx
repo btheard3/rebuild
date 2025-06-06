@@ -4,7 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Moon, Bell, Lock, HelpCircle, LogOut, CreditCard } from 'lucide-react-native';
+import { ChevronRight, Moon, Bell, Lock, CircleHelp as HelpCircle, LogOut, CreditCard } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 type SettingItem = {

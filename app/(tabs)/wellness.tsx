@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image 
 import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BookOpen, Clock, VolumeX, Volume2, Pencil, BarChart } from 'lucide-react-native';
+import { BookOpen, Clock, VolumeX, Volume2, Pencil, ChartBar as BarChart } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 export default function WellnessScreen() {

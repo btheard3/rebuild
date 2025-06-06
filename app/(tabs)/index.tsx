@@ -4,7 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { router } from 'expo-router';
-import { AlertTriangle, ArrowRight, FileText, Brain, MapPin, AlarmClock } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, ArrowRight, FileText, Brain, MapPin, AlarmClock } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BoltBadge from '@/components/BoltBadge';
 

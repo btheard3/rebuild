@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share } fr
 import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
-import { FileText, Share as ShareIcon, Download, CheckCircle } from 'lucide-react-native';
+import { FileText, Share as ShareIcon, Download, CircleCheck as CheckCircle } from 'lucide-react-native';
 
 export default function SummaryStep() {
   const { colors } = useTheme();
