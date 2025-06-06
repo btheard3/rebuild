@@ -24,6 +24,29 @@ class RevenueCatService {
     }
   }
 
+  private async ensureInitialized(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return true;
+    }
+
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    // Double-check that Purchases is properly configured
+    try {
+      if (!Purchases.isConfigured) {
+        console.warn('RevenueCat is not configured, attempting to reinitialize');
+        await this.initialize();
+      }
+    } catch (error) {
+      console.error('Error checking RevenueCat configuration:', error);
+      return false;
+    }
+
+    return this.initialized;
+  }
+
   async getOfferings(): Promise<PurchasesOffering[]> {
     if (Platform.OS === 'web') {
       // Mock offerings for web
@@ -60,6 +83,12 @@ class RevenueCatService {
       ];
     }
 
+    const isInitialized = await this.ensureInitialized();
+    if (!isInitialized) {
+      console.error('RevenueCat not initialized, cannot get offerings');
+      return [];
+    }
+
     try {
       const offerings = await Purchases.getOfferings();
       return Object.values(offerings.all);
@@ -74,6 +103,12 @@ class RevenueCatService {
       // Mock purchase for web
       console.log('Mock purchase for web:', packageIdentifier);
       return true;
+    }
+
+    const isInitialized = await this.ensureInitialized();
+    if (!isInitialized) {
+      console.error('RevenueCat not initialized, cannot purchase package');
+      return false;
     }
 
     try {
@@ -99,6 +134,12 @@ class RevenueCatService {
       return false;
     }
 
+    const isInitialized = await this.ensureInitialized();
+    if (!isInitialized) {
+      console.error('RevenueCat not initialized, cannot restore purchases');
+      return false;
+    }
+
     try {
       const customerInfo = await Purchases.restorePurchases();
       return customerInfo.entitlements.active['premium'] !== undefined;
@@ -113,6 +154,12 @@ class RevenueCatService {
       return null;
     }
 
+    const isInitialized = await this.ensureInitialized();
+    if (!isInitialized) {
+      console.error('RevenueCat not initialized, cannot get customer info');
+      return null;
+    }
+
     try {
       return await Purchases.getCustomerInfo();
     } catch (error) {
@@ -121,12 +168,22 @@ class RevenueCatService {
     }
   }
 
-  onCustomerInfoUpdated(callback: (customerInfo: CustomerInfo) => void) {
+  async onCustomerInfoUpdated(callback: (customerInfo: CustomerInfo) => void) {
     if (Platform.OS === 'web') {
       return;
     }
 
-    Purchases.addCustomerInfoUpdateListener(callback);
+    const isInitialized = await this.ensureInitialized();
+    if (!isInitialized) {
+      console.error('RevenueCat not initialized, cannot add customer info listener');
+      return;
+    }
+
+    try {
+      Purchases.addCustomerInfoUpdateListener(callback);
+    } catch (error) {
+      console.error('Failed to add customer info listener:', error);
+    }
   }
 }
 
