@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
 
 type DisasterOption = {
@@ -13,38 +14,42 @@ const disasters: DisasterOption[] = [
   {
     id: 'hurricane',
     title: 'Hurricane',
-    image: 'https://images.pexels.com/photos/753619/pexels-photo-753619.jpeg',
+    image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
   },
   {
     id: 'flood',
     title: 'Flood',
-    image: 'https://images.pexels.com/photos/1756932/pexels-photo-1756932.jpeg',
+    image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
   },
   {
     id: 'fire',
     title: 'Fire',
-    image: 'https://images.pexels.com/photos/51951/forest-fire-fire-smoke-conservation-51951.jpeg',
+    image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
   },
   {
     id: 'earthquake',
     title: 'Earthquake',
-    image: 'https://images.pexels.com/photos/5461212/pexels-photo-5461212.jpeg',
+    image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
   },
   {
     id: 'tornado',
     title: 'Tornado',
-    image: 'https://images.pexels.com/photos/1446076/pexels-photo-1446076.jpeg',
+    image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
   },
   {
     id: 'other',
     title: 'Other',
-    image: 'https://images.pexels.com/photos/6170463/pexels-photo-6170463.jpeg',
+    image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
   },
 ];
 
 export default function DisasterTypeStep() {
   const { colors } = useTheme();
   const { data, updateData } = useWizard();
+  const { deviceType } = useResponsive();
+
+  const getCardWidth = getResponsiveValue('48%', '32%', '30%');
+  const cardWidth = getCardWidth(deviceType);
 
   const handleSelectDisaster = (disasterType: DisasterOption['id']) => {
     updateData({ disasterType });
@@ -57,7 +62,10 @@ export default function DisasterTypeStep() {
         We'll customize your recovery plan based on your selection.
       </Text>
       
-      <View style={styles.optionsGrid}>
+      <View style={[
+        styles.optionsGrid,
+        deviceType === 'desktop' ? styles.optionsGridDesktop : null
+      ]}>
         {disasters.map((disaster) => (
           <TouchableOpacity
             key={disaster.id}
@@ -66,6 +74,7 @@ export default function DisasterTypeStep() {
               { 
                 borderColor: data.disasterType === disaster.id ? colors.primary : colors.border,
                 borderWidth: data.disasterType === disaster.id ? 2 : 1,
+                width: cardWidth,
               }
             ]}
             onPress={() => handleSelectDisaster(disaster.id)}
@@ -106,8 +115,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  optionsGridDesktop: {
+    justifyContent: 'flex-start',
+  },
   disasterOption: {
-    width: '48%',
     height: 120,
     borderRadius: 12,
     overflow: 'hidden',

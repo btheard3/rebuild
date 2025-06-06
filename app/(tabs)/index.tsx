@@ -2,13 +2,26 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { router } from 'expo-router';
 import { AlertTriangle, ArrowRight, FileText, Brain, MapPin, AlarmClock } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { deviceType, width } = useResponsive();
+
+  const getColumns = getResponsiveValue(1, 2, 2);
+  const getPadding = getResponsiveValue(16, 24, 32);
+  const getCardWidth = getResponsiveValue('100%', '48%', '48%');
+  const getResourceCardWidth = getResponsiveValue('100%', '48%', '32%');
+  
+  const columns = getColumns(deviceType);
+  const padding = getPadding(deviceType);
+  const cardWidth = getCardWidth(deviceType);
+  const resourceCardWidth = getResourceCardWidth(deviceType);
 
   const quickActions = [
     { 
@@ -50,14 +63,14 @@ export default function HomeScreen() {
       id: '1',
       title: 'Natural Disaster Preparation',
       category: 'Guide',
-      image: 'https://images.pexels.com/photos/1694642/pexels-photo-1694642.jpeg',
+      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
       route: '/resources/disaster-preparation',
     },
     {
       id: '2',
       title: 'Financial Aid Programs',
       category: 'Resources',
-      image: 'https://images.pexels.com/photos/47344/dollar-currency-money-us-dollar-47344.jpeg',
+      image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
       route: '/resources/financial-aid',
     },
     {
@@ -78,6 +91,8 @@ export default function HomeScreen() {
           { 
             backgroundColor: colors.surface,
             borderColor: colors.border,
+            width: cardWidth,
+            marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
         onPress={() => router.push(item.route)}
@@ -104,7 +119,9 @@ export default function HomeScreen() {
           styles.resourceCard, 
           { 
             backgroundColor: colors.surface,
-            borderColor: colors.border 
+            borderColor: colors.border,
+            width: resourceCardWidth,
+            marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
         onPress={() => router.push(item.route)}
@@ -127,9 +144,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <View>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { padding }]}>
+        <View style={[
+          styles.header,
+          deviceType === 'desktop' ? styles.headerDesktop : null
+        ]}>
+          <View style={styles.headerText}>
             <Text style={[styles.greeting, { color: colors.text }]}>
               Hello, {user?.name?.split(' ')[0] || 'there'}
             </Text>
@@ -148,14 +168,20 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-          <View style={styles.quickActionsContainer}>
+          <View style={[
+            styles.quickActionsContainer,
+            deviceType !== 'mobile' ? styles.gridContainer : null
+          ]}>
             {quickActions.map(renderQuickAction)}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Resources</Text>
-          <View style={styles.resourcesContainer}>
+          <View style={[
+            styles.resourcesContainer,
+            deviceType !== 'mobile' ? styles.gridContainer : null
+          ]}>
             {resources.map(renderResourceCard)}
           </View>
         </View>
@@ -167,6 +193,7 @@ export default function HomeScreen() {
           <Text style={styles.emergencyButtonText}>Emergency Contact</Text>
         </TouchableOpacity>
       </ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -176,13 +203,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 80,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 24,
+  },
+  headerDesktop: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  headerText: {
+    flex: 1,
   },
   greeting: {
     fontSize: 24,
@@ -212,6 +247,11 @@ const styles = StyleSheet.create({
   },
   quickActionsContainer: {
     gap: 12,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   quickActionCard: {
     flexDirection: 'row',

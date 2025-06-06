@@ -1,12 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
 import { FileText, Share as ShareIcon, Download, CheckCircle } from 'lucide-react-native';
 
 export default function SummaryStep() {
   const { colors } = useTheme();
   const { data } = useWizard();
+  const { deviceType } = useResponsive();
+  
+  const getMaxWidth = getResponsiveValue('100%', 600, 800);
+  const maxWidth = getMaxWidth(deviceType);
   
   const disasterNames: Record<string, string> = {
     hurricane: 'Hurricane',
@@ -18,12 +23,12 @@ export default function SummaryStep() {
   };
 
   const disasterTypeImage: Record<string, string> = {
-    hurricane: 'https://images.pexels.com/photos/753619/pexels-photo-753619.jpeg',
-    flood: 'https://images.pexels.com/photos/1756932/pexels-photo-1756932.jpeg',
-    fire: 'https://images.pexels.com/photos/51951/forest-fire-fire-smoke-conservation-51951.jpeg',
-    earthquake: 'https://images.pexels.com/photos/5461212/pexels-photo-5461212.jpeg',
-    tornado: 'https://images.pexels.com/photos/1446076/pexels-photo-1446076.jpeg',
-    other: 'https://images.pexels.com/photos/6170463/pexels-photo-6170463.jpeg',
+    hurricane: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
+    flood: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
+    fire: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
+    earthquake: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
+    tornado: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
+    other: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
   };
   
   const disasterTypeDisplayName = data.disasterType ? disasterNames[data.disasterType] : 'Unknown';
@@ -74,7 +79,7 @@ export default function SummaryStep() {
   };
   
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { maxWidth, alignSelf: 'center', width: '100%' }]}>
       <Text style={[styles.title, { color: colors.text }]}>Your Recovery Plan</Text>
       
       <View style={[
@@ -172,7 +177,10 @@ export default function SummaryStep() {
         </View>
       </View>
       
-      <View style={styles.actionButtons}>
+      <View style={[
+        styles.actionButtons,
+        deviceType === 'mobile' ? styles.actionButtonsMobile : styles.actionButtonsDesktop
+      ]}>
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: colors.primary }]}
           onPress={() => console.log('Download PDF')}
@@ -314,9 +322,16 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionButtons: {
+    marginBottom: 24,
+  },
+  actionButtonsMobile: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  actionButtonsDesktop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: 12,
   },
   actionButton: {
     flexDirection: 'row',
@@ -326,7 +341,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     flex: 1,
-    marginHorizontal: 4,
   },
   actionButtonText: {
     color: 'white',

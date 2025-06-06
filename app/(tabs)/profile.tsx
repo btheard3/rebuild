@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Image, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, Moon, Bell, Lock, HelpCircle, LogOut, CreditCard } from 'lucide-react-native';
+import BoltBadge from '@/components/BoltBadge';
 
 type SettingItem = {
   id: string;
@@ -18,6 +20,13 @@ type SettingItem = {
 export default function ProfileScreen() {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { deviceType } = useResponsive();
+  
+  const getPadding = getResponsiveValue(16, 24, 32);
+  const getMaxWidth = getResponsiveValue('100%', 600, 800);
+  
+  const padding = getPadding(deviceType);
+  const maxWidth = getMaxWidth(deviceType);
   
   const [settings, setSettings] = useState<SettingItem[]>([
     {
@@ -68,7 +77,7 @@ export default function ProfileScreen() {
         if (item.id === id) {
           if (id === 'theme') {
             toggleTheme();
-            return { ...item, value: theme === 'light' }; // It will flip after toggleTheme
+            return { ...item, value: theme === 'light' };
           }
           return { ...item, value: !item.value };
         }
@@ -134,11 +143,12 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
-  const userPicture = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
+  // Updated with more inclusive profile picture
+  const userPicture = 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
         <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Image source={{ uri: userPicture }} style={styles.profilePicture} />
           <View style={styles.profileInfo}>
@@ -182,6 +192,7 @@ export default function ProfileScreen() {
           Version 1.0.0
         </Text>
       </ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -191,7 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 80,
   },
   profileCard: {
     flexDirection: 'row',

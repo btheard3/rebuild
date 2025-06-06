@@ -1,15 +1,26 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, Clock, VolumeX, Volume2, Pencil, BarChart } from 'lucide-react-native';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function WellnessScreen() {
   const { colors } = useTheme();
+  const { deviceType } = useResponsive();
   const [meditationTime, setMeditationTime] = useState(5);
   const [isMeditating, setIsMeditating] = useState(false);
   const [countdownValue, setCountdownValue] = useState(5 * 60);
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const getPadding = getResponsiveValue(16, 24, 32);
+  const getMaxWidth = getResponsiveValue('100%', 600, 800);
+  const getToolCardWidth = getResponsiveValue('100%', '48%', '32%');
+  
+  const padding = getPadding(deviceType);
+  const maxWidth = getMaxWidth(deviceType);
+  const toolCardWidth = getToolCardWidth(deviceType);
 
   const moodOptions = [
     { id: 'great', label: 'Great', emoji: '😁' },
@@ -68,7 +79,12 @@ export default function WellnessScreen() {
       key={tool.id}
       style={[
         styles.toolCard,
-        { backgroundColor: colors.surface, borderColor: colors.border }
+        { 
+          backgroundColor: colors.surface, 
+          borderColor: colors.border,
+          width: toolCardWidth,
+          marginBottom: deviceType === 'mobile' ? 12 : 16,
+        }
       ]}
       onPress={() => console.log(`Navigate to ${tool.route}`)}
     >
@@ -84,17 +100,23 @@ export default function WellnessScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>How are you feeling?</Text>
-          <View style={styles.moodContainer}>
+          <View style={[
+            styles.moodContainer,
+            deviceType === 'desktop' ? styles.moodContainerDesktop : null
+          ]}>
             {moodOptions.map(renderMoodOption)}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Wellness Tools</Text>
-          <View style={styles.toolsContainer}>
+          <View style={[
+            styles.toolsContainer,
+            deviceType !== 'mobile' ? styles.gridContainer : null
+          ]}>
             {wellnessTools.map(renderWellnessTool)}
           </View>
         </View>
@@ -191,7 +213,7 @@ export default function WellnessScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Affirmation</Text>
           <View style={[styles.affirmationCard, { backgroundColor: colors.primaryLight }]}>
             <Image 
-              source={{ uri: 'https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg' }}
+              source={{ uri: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg' }}
               style={styles.affirmationImage}
             />
             <View style={styles.affirmationOverlay} />
@@ -201,6 +223,7 @@ export default function WellnessScreen() {
           </View>
         </View>
       </ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -210,7 +233,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 80,
   },
   section: {
     marginBottom: 24,
@@ -224,6 +247,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
+  },
+  moodContainerDesktop: {
+    justifyContent: 'center',
+    gap: 16,
   },
   moodOption: {
     alignItems: 'center',
@@ -241,15 +268,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   toolsContainer: {
+    gap: 12,
+  },
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   toolCard: {
-    width: '48%',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 16,
     borderWidth: 1,
   },
   toolIconContainer: {

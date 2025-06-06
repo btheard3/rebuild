@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Phone, MapPin, Clock, Star, Filter, Compass } from 'lucide-react-native';
+import BoltBadge from '@/components/BoltBadge';
 
 type ResourceLocation = {
   id: string;
@@ -19,8 +21,17 @@ type ResourceLocation = {
 
 export default function MapScreen() {
   const { colors } = useTheme();
+  const { deviceType } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | ResourceLocation['type']>('all');
+
+  const getPadding = getResponsiveValue(16, 24, 32);
+  const getMapHeight = getResponsiveValue(200, 250, 300);
+  const getCardWidth = getResponsiveValue('100%', '48%', '32%');
+  
+  const padding = getPadding(deviceType);
+  const mapHeight = getMapHeight(deviceType);
+  const cardWidth = getCardWidth(deviceType);
 
   const resourceTypes = [
     { id: 'all', label: 'All', icon: Compass },
@@ -31,7 +42,7 @@ export default function MapScreen() {
     { id: 'other', label: 'Other', icon: MapPin },
   ];
 
-  // Mock data
+  // Updated with more inclusive images
   const resources: ResourceLocation[] = [
     {
       id: '1',
@@ -43,7 +54,7 @@ export default function MapScreen() {
       hours: '24 hours',
       phone: '(555) 123-4567',
       rating: 4.5,
-      image: 'https://images.pexels.com/photos/307008/pexels-photo-307008.jpeg',
+      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
     },
     {
       id: '2',
@@ -55,7 +66,7 @@ export default function MapScreen() {
       hours: '8am - 8pm',
       phone: '(555) 987-6543',
       rating: 4.2,
-      image: 'https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg',
+      image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
     },
     {
       id: '3',
@@ -67,7 +78,7 @@ export default function MapScreen() {
       hours: '9am - 5pm',
       phone: '(555) 333-2222',
       rating: 4.0,
-      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
+      image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
     },
     {
       id: '4',
@@ -79,7 +90,7 @@ export default function MapScreen() {
       hours: '10am - 6pm',
       phone: '(555) 444-5555',
       rating: 3.8,
-      image: 'https://images.pexels.com/photos/6169668/pexels-photo-6169668.jpeg',
+      image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
     },
   ];
 
@@ -114,6 +125,8 @@ export default function MapScreen() {
         { 
           backgroundColor: colors.surface,
           borderColor: colors.border,
+          width: cardWidth,
+          marginBottom: deviceType === 'mobile' ? 12 : 16,
         }
       ]}
       onPress={() => console.log(`View details for ${resource.name}`)}
@@ -171,9 +184,9 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.mapPlaceholder}>
+      <View style={[styles.mapPlaceholder, { height: mapHeight }]}>
         <Image
-          source={{ uri: 'https://images.pexels.com/photos/2760241/pexels-photo-2760241.jpeg' }}
+          source={{ uri: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg' }}
           style={styles.mapImage}
           resizeMode="cover"
         />
@@ -183,7 +196,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { paddingHorizontal: padding }]}>
         <View style={styles.header}>
           <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Search size={20} color={colors.textSecondary} />
@@ -243,9 +256,15 @@ export default function MapScreen() {
         </Text>
         
         <ScrollView style={styles.resultsContainer}>
-          {filteredResources.map(renderResourceItem)}
+          <View style={[
+            styles.resultsGrid,
+            deviceType !== 'mobile' ? styles.gridContainer : null
+          ]}>
+            {filteredResources.map(renderResourceItem)}
+          </View>
         </ScrollView>
       </View>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -255,7 +274,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapPlaceholder: {
-    height: 200,
     width: '100%',
     position: 'relative',
   },
@@ -284,7 +302,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 16,
     paddingTop: 16,
   },
   header: {
@@ -342,11 +359,18 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
   },
+  resultsGrid: {
+    gap: 12,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   resourceCard: {
     flexDirection: 'row',
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
     borderWidth: 1,
   },
   resourceImage: {

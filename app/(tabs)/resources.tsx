@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Filter, FolderPlus, FileText, Image as ImageIcon } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import BoltBadge from '@/components/BoltBadge';
 
 type ResourceCategory = 'All' | 'Documents' | 'Images' | 'Insurance' | 'Medical' | 'Legal';
 
@@ -20,10 +22,19 @@ type ResourceItem = {
 
 export default function ResourcesScreen() {
   const { colors } = useTheme();
+  const { deviceType } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('All');
 
-  // Mock data
+  const getPadding = getResponsiveValue(16, 24, 32);
+  const getMaxWidth = getResponsiveValue('100%', 800, 1000);
+  const getNumColumns = getResponsiveValue(1, 2, 3);
+  
+  const padding = getPadding(deviceType);
+  const maxWidth = getMaxWidth(deviceType);
+  const numColumns = getNumColumns(deviceType);
+
+  // Updated with more inclusive images
   const resources: ResourceItem[] = [
     {
       id: '1',
@@ -32,7 +43,7 @@ export default function ResourcesScreen() {
       type: 'document',
       category: 'Insurance',
       size: '2.3 MB',
-      previewUrl: 'https://images.pexels.com/photos/95916/pexels-photo-95916.jpeg',
+      previewUrl: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
     },
     {
       id: '2',
@@ -41,7 +52,7 @@ export default function ResourcesScreen() {
       type: 'image',
       category: 'Insurance',
       size: '4.7 MB',
-      previewUrl: 'https://images.pexels.com/photos/1556704/pexels-photo-1556704.jpeg',
+      previewUrl: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
     },
     {
       id: '3',
@@ -50,7 +61,7 @@ export default function ResourcesScreen() {
       type: 'document',
       category: 'Medical',
       size: '1.8 MB',
-      previewUrl: 'https://images.pexels.com/photos/3938022/pexels-photo-3938022.jpeg',
+      previewUrl: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
     },
     {
       id: '4',
@@ -59,7 +70,7 @@ export default function ResourcesScreen() {
       type: 'document',
       category: 'Legal',
       size: '3.2 MB',
-      previewUrl: 'https://images.pexels.com/photos/7194314/pexels-photo-7194314.jpeg',
+      previewUrl: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
     },
   ];
 
@@ -84,10 +95,6 @@ export default function ResourcesScreen() {
       }
 
       console.log('Document picked:', result.assets[0]);
-      // Here you would normally upload the document to your storage
-      // and add it to your resources list
-      
-      // For now, we'll just show a success alert
       alert(`Document "${result.assets[0].name}" added successfully!`);
       
     } catch (error) {
@@ -128,6 +135,7 @@ export default function ResourcesScreen() {
         { 
           backgroundColor: colors.surface,
           borderColor: colors.border,
+          width: deviceType === 'mobile' ? '100%' : `${100 / numColumns - 2}%`,
         }
       ]}
       onPress={() => console.log(`Open ${item.name}`)}
@@ -160,59 +168,65 @@ export default function ResourcesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Search size={20} color={colors.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search resources..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+      <View style={[styles.content, { paddingHorizontal: padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
+        <View style={styles.header}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Search size={20} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search resources..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => console.log('Filter pressed')}
+          >
+            <Filter size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.categoriesContainer}>
+          <FlatList
+            data={categories}
+            renderItem={({ item }) => renderCategoryChip(item)}
+            keyExtractor={(item) => item}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesList}
           />
         </View>
         
-        <TouchableOpacity 
-          style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => console.log('Filter pressed')}
+        {filteredResources.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No resources found. Try adjusting your search or add new documents.
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredResources}
+            renderItem={renderResourceItem}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns}
+            key={numColumns}
+            contentContainerStyle={styles.resourcesList}
+            columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
+          />
+        )}
+        
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
+          onPress={handleDocumentUpload}
         >
-          <Filter size={20} color={colors.primary} />
+          <FolderPlus size={24} color="white" />
+          <Text style={styles.addButtonText}>Add Document</Text>
         </TouchableOpacity>
       </View>
-      
-      <View style={styles.categoriesContainer}>
-        <FlatList
-          data={categories}
-          renderItem={({ item }) => renderCategoryChip(item)}
-          keyExtractor={(item) => item}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
-        />
-      </View>
-      
-      {filteredResources.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No resources found. Try adjusting your search or add new documents.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredResources}
-          renderItem={renderResourceItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.resourcesList}
-        />
-      )}
-      
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: colors.primary }]}
-        onPress={handleDocumentUpload}
-      >
-        <FolderPlus size={24} color="white" />
-        <Text style={styles.addButtonText}>Add Document</Text>
-      </TouchableOpacity>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -220,12 +234,14 @@ export default function ResourcesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  content: {
+    flex: 1,
+    paddingTop: 12,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
     marginBottom: 16,
     gap: 12,
   },
@@ -282,6 +298,9 @@ const styles = StyleSheet.create({
   },
   resourcesList: {
     paddingBottom: 80,
+  },
+  row: {
+    justifyContent: 'space-between',
   },
   resourceItem: {
     flexDirection: 'row',

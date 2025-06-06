@@ -2,7 +2,9 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
+import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BoltBadge from '@/components/BoltBadge';
 
 const { width } = Dimensions.get('window');
 
@@ -11,32 +13,48 @@ const slides = [
     id: '1',
     title: 'Welcome to Rebuild',
     description: 'Your comprehensive disaster recovery assistant to help you through difficult times.',
-    image: 'https://images.pexels.com/photos/3807316/pexels-photo-3807316.jpeg'
+    image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg'
   },
   {
     id: '2',
     title: 'Crisis Recovery',
     description: 'Step-by-step guidance to navigate through disaster recovery and access essential resources.',
-    image: 'https://images.pexels.com/photos/6647037/pexels-photo-6647037.jpeg'
+    image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg'
   },
   {
     id: '3',
     title: 'Secure Document Storage',
     description: 'Keep your important documents safe and accessible when you need them most.',
-    image: 'https://images.pexels.com/photos/4098365/pexels-photo-4098365.jpeg'
+    image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg'
   },
   {
     id: '4',
     title: 'Mental Wellbeing',
     description: 'Tools to support your mental health during challenging recovery periods.',
-    image: 'https://images.pexels.com/photos/3771069/pexels-photo-3771069.jpeg'
+    image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg'
   }
 ];
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
+  const { deviceType, width: screenWidth } = useResponsive();
   const scrollX = useRef(new Animated.Value(0)).current;
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const getImageSize = getResponsiveValue(
+    screenWidth * 0.8,
+    screenWidth * 0.6,
+    screenWidth * 0.4
+  );
+  
+  const getTitleSize = getResponsiveValue(24, 28, 32);
+  const getDescriptionSize = getResponsiveValue(16, 18, 20);
+  const getPaddingHorizontal = getResponsiveValue(20, 40, 60);
+  
+  const imageSize = getImageSize(deviceType);
+  const titleSize = getTitleSize(deviceType);
+  const descriptionSize = getDescriptionSize(deviceType);
+  const paddingHorizontal = getPaddingHorizontal(deviceType);
   
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -44,7 +62,7 @@ export default function OnboardingScreen() {
   );
 
   const handleMomentumScrollEnd = (event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
     setCurrentIndex(index);
   };
 
@@ -55,7 +73,6 @@ export default function OnboardingScreen() {
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      // Scroll to next slide
       if (flatListRef.current) {
         flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
       }
@@ -68,15 +85,15 @@ export default function OnboardingScreen() {
 
   const renderItem = ({ item }: { item: typeof slides[0] }) => {
     return (
-      <View style={[styles.slide, { width, backgroundColor: colors.background }]}>
+      <View style={[styles.slide, { width: screenWidth, backgroundColor: colors.background }]}>
         <Image 
           source={{ uri: item.image }} 
-          style={styles.image}
+          style={[styles.image, { width: imageSize, height: imageSize }]}
           resizeMode="cover"
         />
-        <View style={styles.textContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-          <Text style={[styles.description, { color: colors.textSecondary }]}>{item.description}</Text>
+        <View style={[styles.textContainer, { paddingHorizontal }]}>
+          <Text style={[styles.title, { color: colors.text, fontSize: titleSize }]}>{item.title}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary, fontSize: descriptionSize }]}>{item.description}</Text>
         </View>
       </View>
     );
@@ -84,10 +101,10 @@ export default function OnboardingScreen() {
 
   const renderPagination = () => {
     return (
-      <View style={styles.paginationContainer}>
+      <View style={[styles.paginationContainer, { paddingHorizontal }]}>
         <View style={styles.paginationDots}>
           {slides.map((_, index) => {
-            const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+            const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
 
             const dotWidth = scrollX.interpolate({
               inputRange,
@@ -146,6 +163,7 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
       />
       {renderPagination()}
+      <BoltBadge position="bottom-left" size={deviceType === 'mobile' ? 'small' : 'medium'} />
     </SafeAreaView>
   );
 }
@@ -160,33 +178,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-    width: width * 0.8,
-    height: width * 0.8,
     borderRadius: 20,
     marginBottom: 40,
   },
   textContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
   },
   description: {
-    fontSize: 16,
     textAlign: 'center',
     marginBottom: 20,
-    paddingHorizontal: 20,
+    lineHeight: 24,
   },
   paginationContainer: {
     position: 'absolute',
     bottom: 24,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
   },
   paginationDots: {
     flexDirection: 'row',
