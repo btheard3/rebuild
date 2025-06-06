@@ -1,10 +1,23 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { Home, Search, MapPin, Bell, User } from 'lucide-react-native';
+import { analyticsService } from '@/services/analyticsService';
+import { useEffect } from 'react';
+import { Home, Search, MapPin, Bell, User, Video, Trophy } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
+  
+  useEffect(() => {
+    // Track tab navigation
+    const trackTabChange = (routeName: string) => {
+      analyticsService.trackScreen(`tab_${routeName}`);
+    };
+
+    // This would be implemented with navigation state listener in a real app
+    // For now, we'll track when the layout mounts
+    analyticsService.trackEvent('tabs_layout_mounted');
+  }, []);
   
   return (
     <Tabs
@@ -39,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cases"
         options={{
-          title: 'Cases',
+          title: 'Resources',
           tabBarIcon: ({ color, size }) => <Search size={size} color={color} />,
         }}
       />
@@ -48,6 +61,20 @@ export default function TabLayout() {
         options={{
           title: 'Map',
           tabBarIcon: ({ color, size }) => <MapPin size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="video-checkin"
+        options={{
+          title: 'AI Video',
+          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="achievements"
+        options={{
+          title: 'Progress',
+          tabBarIcon: ({ color, size }) => <Trophy size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -62,6 +89,18 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="wellness"
+        options={{
+          href: null, // Hide from tab bar but keep accessible
+        }}
+      />
+      <Tabs.Screen
+        name="resources"
+        options={{
+          href: null, // Hide from tab bar but keep accessible
         }}
       />
     </Tabs>

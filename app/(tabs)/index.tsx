@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { router } from 'expo-router';
-import { TriangleAlert as AlertTriangle, ArrowRight, FileText, Brain, MapPin, AlarmClock } from 'lucide-react-native';
+import { analyticsService } from '@/services/analyticsService';
+import { TriangleAlert as AlertTriangle, ArrowRight, FileText, Brain, MapPin, AlarmClock, Star, Crown, Zap } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BoltBadge from '@/components/BoltBadge';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { data: gamificationData, addPoints, updateStreak, completeAchievement } = useGamification();
   const { deviceType, width } = useResponsive();
 
   const getColumns = getResponsiveValue(1, 2, 2);
@@ -23,6 +26,17 @@ export default function HomeScreen() {
   const cardWidth = getCardWidth(deviceType);
   const resourceCardWidth = getResourceCardWidth(deviceType);
 
+  useEffect(() => {
+    analyticsService.trackScreen('dashboard');
+    updateStreak();
+    
+    // Complete first login achievement if not already done
+    const firstLoginAchievement = gamificationData.achievements.find(a => a.id === 'first_login');
+    if (firstLoginAchievement && !firstLoginAchievement.unlocked) {
+      setTimeout(() => completeAchievement('first_login'), 1000);
+    }
+  }, []);
+
   const quickActions = [
     { 
       id: '1', 
@@ -31,6 +45,7 @@ export default function HomeScreen() {
       icon: AlertTriangle, 
       color: colors.error,
       route: '/recovery-wizard',
+      premium: false,
     },
     { 
       id: '2', 
@@ -39,6 +54,7 @@ export default function HomeScreen() {
       icon: FileText, 
       color: colors.primary,
       route: '/(tabs)/resources',
+      premium: false,
     },
     { 
       id: '3', 
@@ -47,6 +63,7 @@ export default function HomeScreen() {
       icon: MapPin, 
       color: colors.success,
       route: '/(tabs)/map',
+      premium: false,
     },
     { 
       id: '4', 
@@ -55,6 +72,7 @@ export default function HomeScreen() {
       icon: Brain, 
       color: colors.accent,
       route: '/(tabs)/wellness',
+      premium: false,
     },
   ];
 
@@ -82,6 +100,29 @@ export default function HomeScreen() {
     },
   ];
 
+  const handleQuickAction = (item: typeof quickActions[0]) => {
+    analyticsService.trackUserAction('quick_action_pressed', 'dashboard', {
+      action_id: item.id,
+      action_title: item.title,
+      premium_required: item.premium
+    });
+
+    if (item.premium && !user?.isPremium) {
+      // Handle premium feature access
+      analyticsService.trackEvent('premium_feature_attempted', {
+        feature: item.title,
+        user_premium: false
+      });
+    }
+
+    router.push(item.route as any);
+  };
+
+  const handleDailyTask = () => {
+    addPoints(10, 'Completed daily task');
+    analyticsService.trackUserAction('daily_task_completed', 'dashboard');
+  };
+
   const renderQuickAction = (item: typeof quickActions[0]) => {
     return (
       <TouchableOpacity 
@@ -95,13 +136,18 @@ export default function HomeScreen() {
             marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
-        onPress={() => router.push(item.route as any)}
+        onPress={() => handleQuickAction(item)}
       >
         <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
           <item.icon size={24} color={item.color} />
         </View>
         <View style={styles.actionTextContainer}>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>{item.title}</Text>
+          <View style={styles.actionTitleRow}>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>{item.title}</Text>
+            {item.premium && (
+              <Crown size={16} color={colors.warning} />
+            )}
+          </View>
           <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>
             {item.description}
           </Text>
@@ -124,7 +170,13 @@ export default function HomeScreen() {
             marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
-        onPress={() => router.push(item.route as any)}
+        onPress={() => {
+          analyticsService.trackUserAction('resource_viewed', 'dashboard', {
+            resource_id: item.id,
+            resource_title: item.title
+          });
+          router.push(item.route as any);
+        }}
       >
         <Image 
           source={{ uri: item.image }}
@@ -141,6 +193,39 @@ export default function HomeScreen() {
       </TouchableOpacity>
     );
   };
+
+  const renderGamificationCard = () => (
+    <TouchableOpacity
+      style={[styles.gamificationCard, { backgroundColor: colors.primaryLight }]}
+      onPress={() => {
+        analyticsService.trackUserAction('gamification_card_pressed', 'dashboard');
+        router.push('/(tabs)/achievements');
+      }}
+    >
+      <View style={styles.gamificationHeader}>
+        <View style={styles.gamificationInfo}>
+          <Text style={[styles.gamificationLevel, { color: colors.primary }]}>
+            Level {gamificationData.level}
+          </Text>
+          <Text style={[styles.gamificationPoints, { color: colors.text }]}>
+            {gamificationData.points.toLocaleString()} points
+          </Text>
+        </View>
+        <View style={[styles.gamificationIcon, { backgroundColor: colors.primary + '20' }]}>
+          <Star size={24} color={colors.primary} />
+        </View>
+      </View>
+      
+      {gamificationData.streakDays > 0 && (
+        <View style={styles.streakContainer}>
+          <Zap size={16} color={colors.warning} />
+          <Text style={[styles.streakText, { color: colors.text }]}>
+            {gamificationData.streakDays} day streak!
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -161,10 +246,12 @@ export default function HomeScreen() {
           <View style={[styles.statusCard, { backgroundColor: colors.primaryLight }]}>
             <AlarmClock size={20} color={colors.primary} />
             <Text style={[styles.statusText, { color: colors.primary }]}>
-              Recovery Day 3
+              Recovery Day {gamificationData.streakDays || 1}
             </Text>
           </View>
         </View>
+
+        {renderGamificationCard()}
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
@@ -177,7 +264,17 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Resources</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Resources</Text>
+            <TouchableOpacity 
+              onPress={() => {
+                analyticsService.trackUserAction('view_all_resources', 'dashboard');
+                router.push('/(tabs)/cases');
+              }}
+            >
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
+            </TouchableOpacity>
+          </View>
           <View style={[
             styles.resourcesContainer,
             deviceType !== 'mobile' ? styles.gridContainer : null
@@ -186,9 +283,30 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Progress</Text>
+          <TouchableOpacity 
+            style={[styles.dailyTaskCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={handleDailyTask}
+          >
+            <View style={styles.dailyTaskContent}>
+              <Text style={[styles.dailyTaskTitle, { color: colors.text }]}>Complete Daily Check-in</Text>
+              <Text style={[styles.dailyTaskDescription, { color: colors.textSecondary }]}>
+                Earn 10 points by checking in today
+              </Text>
+            </View>
+            <View style={[styles.dailyTaskPoints, { backgroundColor: colors.success + '20' }]}>
+              <Text style={[styles.dailyTaskPointsText, { color: colors.success }]}>+10</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity 
           style={[styles.emergencyButton, { backgroundColor: colors.error }]}
-          onPress={() => console.log('Emergency Contact')}
+          onPress={() => {
+            analyticsService.trackUserAction('emergency_contact_pressed', 'dashboard');
+            console.log('Emergency Contact');
+          }}
         >
           <Text style={styles.emergencyButtonText}>Emergency Contact</Text>
         </TouchableOpacity>
@@ -237,13 +355,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
+  gamificationCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  gamificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gamificationInfo: {
+    flex: 1,
+  },
+  gamificationLevel: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  gamificationPoints: {
+    fontSize: 14,
+  },
+  gamificationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  streakText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   section: {
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   quickActionsContainer: {
     gap: 12,
@@ -270,6 +435,11 @@ const styles = StyleSheet.create({
   },
   actionTextContainer: {
     flex: 1,
+  },
+  actionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   actionTitle: {
     fontSize: 16,
@@ -302,6 +472,33 @@ const styles = StyleSheet.create({
   resourceTitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  dailyTaskCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  dailyTaskContent: {
+    flex: 1,
+  },
+  dailyTaskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  dailyTaskDescription: {
+    fontSize: 14,
+  },
+  dailyTaskPoints: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  dailyTaskPointsText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   emergencyButton: {
     padding: 16,

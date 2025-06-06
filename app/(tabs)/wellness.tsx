@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BookOpen, Clock, VolumeX, Volume2, Pencil, ChartBar as BarChart } from 'lucide-react-native';
+import { analyticsService } from '@/services/analyticsService';
+import { elevenLabsService } from '@/services/elevenLabsService';
+import { BookOpen, Clock, VolumeX, Volume2, Pencil, ChartBar as BarChart, Crown, Lock } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
+import PaywallScreen from '@/components/PaywallScreen';
 
 export default function WellnessScreen() {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const { addPoints, completeAchievement } = useGamification();
   const { deviceType } = useResponsive();
   const [meditationTime, setMeditationTime] = useState(5);
   const [isMeditating, setIsMeditating] = useState(false);
   const [countdownValue, setCountdownValue] = useState(5 * 60);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [journalEntry, setJournalEntry] = useState('');
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -21,6 +32,10 @@ export default function WellnessScreen() {
   const padding = getPadding(deviceType);
   const maxWidth = getMaxWidth(deviceType);
   const toolCardWidth = getToolCardWidth(deviceType);
+
+  useEffect(() => {
+    analyticsService.trackScreen('wellness');
+  }, []);
 
   const moodOptions = [
     { id: 'great', label: 'Great', emoji: '😁' },
@@ -63,11 +78,110 @@ export default function WellnessScreen() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const handleMoodSelection = (moodId: string) => {
+    setSelectedMood(moodId);
+    analyticsService.trackEvent('mood_selected', { mood: moodId });
+    addPoints(5, 'Mood check-in');
+  };
+
+  const handleJournalSave = async () => {
+    if (!journalEntry.trim()) return;
+
+    analyticsService.trackEvent('journal_entry_saved', { 
+      entry_length: journalEntry.length,
+      mood: selectedMood 
+    });
+    
+    addPoints(25, 'Journal entry saved');
+    
+    // Check for first journal achievement
+    setTimeout(() => completeAchievement('first_journal'), 100);
+
+    // Generate empathetic response based on mood and content
+    if (selectedMood && user?.isPremium) {
+      await generateEmpathicResponse();
+    }
+
+    Alert.alert('Journal Saved', 'Your thoughts have been recorded securely.');
+    setJournalEntry('');
+  };
+
+  const generateEmpathicResponse = async () => {
+    if (!selectedMood) return;
+
+    setIsPlayingAudio(true);
+    analyticsService.trackEvent('empathic_audio_generated', { mood: selectedMood });
+
+    try {
+      const affirmation = elevenLabsService.getAffirmationForMood(selectedMood);
+      await elevenLabsService.generateAndPlaySpeech(affirmation);
+      addPoints(10, 'Listened to AI affirmation');
+    } catch (error) {
+      console.error('Failed to generate empathic response:', error);
+    } finally {
+      setIsPlayingAudio(false);
+    }
+  };
+
+  const handleReadJournalAloud = async () => {
+    if (!journalEntry.trim()) {
+      Alert.alert('No Content', 'Please write something in your journal first.');
+      return;
+    }
+
+    if (!user?.isPremium) {
+      setShowPaywall(true);
+      analyticsService.trackEvent('wellness_paywall_shown', { feature: 'read_aloud' });
+      return;
+    }
+
+    setIsPlayingAudio(true);
+    analyticsService.trackEvent('journal_read_aloud', { entry_length: journalEntry.length });
+
+    try {
+      await elevenLabsService.generateAndPlaySpeech(journalEntry);
+    } catch (error) {
+      console.error('Failed to read journal aloud:', error);
+      Alert.alert('Error', 'Could not read your journal entry aloud. Please try again.');
+    } finally {
+      setIsPlayingAudio(false);
+    }
+  };
+
+  const handleListenToAffirmation = async () => {
+    if (!user?.isPremium) {
+      setShowPaywall(true);
+      analyticsService.trackEvent('wellness_paywall_shown', { feature: 'affirmation' });
+      return;
+    }
+
+    const mood = selectedMood || 'default';
+    setIsPlayingAudio(true);
+    analyticsService.trackEvent('affirmation_played', { mood });
+
+    try {
+      const affirmation = elevenLabsService.getAffirmationForMood(mood);
+      await elevenLabsService.generateAndPlaySpeech(affirmation);
+      addPoints(15, 'Listened to daily affirmation');
+    } catch (error) {
+      console.error('Failed to play affirmation:', error);
+      Alert.alert('Error', 'Could not play affirmation. Please try again.');
+    } finally {
+      setIsPlayingAudio(false);
+    }
+  };
+
   const renderMoodOption = (option: { id: string; label: string; emoji: string }) => (
     <TouchableOpacity
       key={option.id}
-      style={[styles.moodOption, { borderColor: colors.border }]}
-      onPress={() => console.log(`Mood selected: ${option.label}`)}
+      style={[
+        styles.moodOption, 
+        { 
+          borderColor: selectedMood === option.id ? colors.primary : colors.border,
+          backgroundColor: selectedMood === option.id ? colors.primaryLight : colors.surface,
+        }
+      ]}
+      onPress={() => handleMoodSelection(option.id)}
     >
       <Text style={styles.moodEmoji}>{option.emoji}</Text>
       <Text style={[styles.moodLabel, { color: colors.text }]}>{option.label}</Text>
@@ -86,7 +200,12 @@ export default function WellnessScreen() {
           marginBottom: deviceType === 'mobile' ? 12 : 16,
         }
       ]}
-      onPress={() => console.log(`Navigate to ${tool.route}`)}
+      onPress={() => {
+        analyticsService.trackUserAction('wellness_tool_accessed', 'wellness', {
+          tool: tool.title
+        });
+        console.log(`Navigate to ${tool.route}`);
+      }}
     >
       <View style={[styles.toolIconContainer, { backgroundColor: tool.color + '20' }]}>
         <tool.icon size={24} color={tool.color} />
@@ -109,6 +228,26 @@ export default function WellnessScreen() {
           ]}>
             {moodOptions.map(renderMoodOption)}
           </View>
+          
+          {selectedMood && (
+            <View style={styles.affirmationSection}>
+              <TouchableOpacity
+                style={[
+                  styles.affirmationButton,
+                  { 
+                    backgroundColor: user?.isPremium ? colors.accent : colors.disabled,
+                  }
+                ]}
+                onPress={handleListenToAffirmation}
+                disabled={isPlayingAudio}
+              >
+                {!user?.isPremium && <Crown size={16} color="white" />}
+                <Text style={[styles.affirmationButtonText, { marginLeft: !user?.isPremium ? 8 : 0 }]}>
+                  {isPlayingAudio ? 'Playing...' : 'Listen to Affirmation'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -140,7 +279,10 @@ export default function WellnessScreen() {
               </Text>
               <TouchableOpacity
                 style={[styles.meditationButton, { backgroundColor: colors.error }]}
-                onPress={() => setIsMeditating(false)}
+                onPress={() => {
+                  setIsMeditating(false);
+                  analyticsService.trackEvent('meditation_stopped', { duration: meditationTime * 60 - countdownValue });
+                }}
               >
                 <Text style={styles.meditationButtonText}>Stop</Text>
               </TouchableOpacity>
@@ -179,7 +321,11 @@ export default function WellnessScreen() {
               </View>
               <TouchableOpacity
                 style={[styles.meditationButton, { backgroundColor: colors.accent }]}
-                onPress={() => setIsMeditating(true)}
+                onPress={() => {
+                  setIsMeditating(true);
+                  analyticsService.trackEvent('meditation_started', { duration: meditationTime });
+                  addPoints(20, 'Started meditation session');
+                }}
               >
                 <Text style={styles.meditationButtonText}>Start Meditation</Text>
               </TouchableOpacity>
@@ -190,7 +336,25 @@ export default function WellnessScreen() {
         <View style={[styles.journalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.journalHeader}>
             <Text style={[styles.journalTitle, { color: colors.text }]}>Daily Journal</Text>
-            <Pencil size={20} color={colors.success} />
+            <View style={styles.journalActions}>
+              {user?.isPremium ? (
+                <TouchableOpacity
+                  onPress={handleReadJournalAloud}
+                  disabled={isPlayingAudio || !journalEntry.trim()}
+                  style={[styles.journalActionButton, { opacity: (!journalEntry.trim() || isPlayingAudio) ? 0.5 : 1 }]}
+                >
+                  <Volume2 size={16} color={colors.primary} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setShowPaywall(true)}
+                  style={styles.journalActionButton}
+                >
+                  <Lock size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+              <Pencil size={20} color={colors.success} />
+            </View>
           </View>
           
           <TextInput
@@ -199,11 +363,19 @@ export default function WellnessScreen() {
             placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
+            value={journalEntry}
+            onChangeText={setJournalEntry}
           />
           
           <TouchableOpacity 
-            style={[styles.journalButton, { backgroundColor: colors.success }]}
-            onPress={() => console.log('Save journal entry')}
+            style={[
+              styles.journalButton, 
+              { 
+                backgroundColor: journalEntry.trim() ? colors.success : colors.disabled 
+              }
+            ]}
+            onPress={handleJournalSave}
+            disabled={!journalEntry.trim()}
           >
             <Text style={styles.journalButtonText}>Save Entry</Text>
           </TouchableOpacity>
@@ -223,6 +395,12 @@ export default function WellnessScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <PaywallScreen 
+        visible={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+      />
+      
       <BoltBadge />
     </SafeAreaView>
   );
@@ -247,6 +425,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
+    marginBottom: 16,
   },
   moodContainerDesktop: {
     justifyContent: 'center',
@@ -257,7 +436,7 @@ const styles = StyleSheet.create({
     width: '18%',
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
   },
   moodEmoji: {
     fontSize: 28,
@@ -266,6 +445,21 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  affirmationSection: {
+    alignItems: 'center',
+  },
+  affirmationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  affirmationButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   toolsContainer: {
     gap: 12,
@@ -368,6 +562,14 @@ const styles = StyleSheet.create({
   journalTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  journalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  journalActionButton: {
+    padding: 4,
   },
   journalInput: {
     borderWidth: 1,

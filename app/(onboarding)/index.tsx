@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { analyticsService } from '@/services/analyticsService';
 import BoltBadge from '@/components/BoltBadge';
 
 const { width } = Dimensions.get('window');
@@ -17,21 +18,27 @@ const slides = [
   },
   {
     id: '2',
-    title: 'Crisis Recovery',
-    description: 'Step-by-step guidance to navigate through disaster recovery and access essential resources.',
+    title: 'Born from Experience',
+    description: 'Created by Hurricane Katrina survivors who understand the challenges of disaster recovery firsthand.',
     image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg'
   },
   {
     id: '3',
-    title: 'Secure Document Storage',
-    description: 'Keep your important documents safe and accessible when you need them most.',
+    title: 'AI-Powered Support',
+    description: 'Get personalized guidance with empathetic AI that adapts to your unique recovery journey.',
     image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg'
   },
   {
     id: '4',
-    title: 'Mental Wellbeing',
-    description: 'Tools to support your mental health during challenging recovery periods.',
+    title: 'Secure & Verified',
+    description: 'Keep your important documents safe with blockchain verification and secure cloud storage.',
     image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg'
+  },
+  {
+    id: '5',
+    title: 'Community Impact',
+    description: 'Join a supportive community dedicated to helping underserved groups rebuild stronger.',
+    image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg'
   }
 ];
 
@@ -55,6 +62,10 @@ export default function OnboardingScreen() {
   const titleSize = getTitleSize(deviceType);
   const descriptionSize = getDescriptionSize(deviceType);
   const paddingHorizontal = getPaddingHorizontal(deviceType);
+
+  React.useEffect(() => {
+    analyticsService.trackScreen('onboarding');
+  }, []);
   
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -64,9 +75,11 @@ export default function OnboardingScreen() {
   const handleMomentumScrollEnd = (event: any) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
     setCurrentIndex(index);
+    analyticsService.trackEvent('onboarding_slide_viewed', { slide_index: index, slide_title: slides[index]?.title });
   };
 
   const handleSkip = () => {
+    analyticsService.trackEvent('onboarding_skipped', { current_slide: currentIndex });
     router.replace('/(auth)');
   };
 
@@ -76,7 +89,9 @@ export default function OnboardingScreen() {
       if (flatListRef.current) {
         flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
       }
+      analyticsService.trackEvent('onboarding_next_pressed', { slide_index: currentIndex });
     } else {
+      analyticsService.trackEvent('onboarding_completed');
       router.replace('/(auth)');
     }
   };

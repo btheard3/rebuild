@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Image, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Moon, Bell, Lock, CircleHelp as HelpCircle, LogOut, CreditCard } from 'lucide-react-native';
+import { analyticsService } from '@/services/analyticsService';
+import { ChevronRight, Moon, Bell, Lock, CircleHelp as HelpCircle, LogOut, CreditCard, Crown, Contrast } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
+import PaywallScreen from '@/components/PaywallScreen';
 
 type SettingItem = {
   id: string;
@@ -18,15 +21,21 @@ type SettingItem = {
 };
 
 export default function ProfileScreen() {
-  const { colors, theme, toggleTheme } = useTheme();
+  const { colors, theme, toggleTheme, highContrastMode, toggleHighContrastMode } = useTheme();
   const { user, signOut } = useAuth();
+  const { data: gamificationData } = useGamification();
   const { deviceType } = useResponsive();
+  const [showPaywall, setShowPaywall] = useState(false);
   
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
   
   const padding = getPadding(deviceType);
   const maxWidth = getMaxWidth(deviceType);
+
+  React.useEffect(() => {
+    analyticsService.trackScreen('profile');
+  }, []);
   
   const [settings, setSettings] = useState<SettingItem[]>([
     {
@@ -36,6 +45,14 @@ export default function ProfileScreen() {
       type: 'toggle',
       value: theme === 'dark',
       color: colors.primary,
+    },
+    {
+      id: 'high_contrast',
+      title: 'High Contrast',
+      icon: Contrast,
+      type: 'toggle',
+      value: highContrastMode,
+      color: colors.accent,
     },
     {
       id: 'notifications',
@@ -77,13 +94,33 @@ export default function ProfileScreen() {
         if (item.id === id) {
           if (id === 'theme') {
             toggleTheme();
+            analyticsService.trackEvent('theme_toggled', { new_theme: theme === 'light' ? 'dark' : 'light' });
             return { ...item, value: theme === 'light' };
+          } else if (id === 'high_contrast') {
+            toggleHighContrastMode();
+            analyticsService.trackEvent('high_contrast_toggled', { enabled: !highContrastMode });
+            return { ...item, value: !highContrastMode };
+          } else {
+            analyticsService.trackEvent('setting_toggled', { setting: id, value: !item.value });
+            return { ...item, value: !item.value };
           }
-          return { ...item, value: !item.value };
         }
         return item;
       })
     );
+  };
+
+  const handleSubscriptionPress = () => {
+    if (user?.isPremium) {
+      Alert.alert(
+        'Premium Subscription',
+        'You are currently subscribed to Premium. Manage your subscription in your device settings.',
+        [{ text: 'OK' }]
+      );
+    } else {
+      setShowPaywall(true);
+      analyticsService.trackEvent('profile_subscription_pressed', { user_premium: false });
+    }
   };
 
   const handleLogout = () => {
@@ -98,7 +135,10 @@ export default function ProfileScreen() {
         {
           text: 'Log Out',
           style: 'destructive',
-          onPress: () => signOut(),
+          onPress: () => {
+            analyticsService.trackEvent('user_logout_initiated');
+            signOut();
+          },
         },
       ],
       { cancelable: true }
@@ -118,7 +158,10 @@ export default function ProfileScreen() {
       onPress={() => {
         if (item.type === 'toggle') {
           handleToggle(item.id);
+        } else if (item.id === 'subscription') {
+          handleSubscriptionPress();
         } else if (item.route) {
+          analyticsService.trackUserAction('setting_link_pressed', 'profile', { setting: item.id });
           console.log(`Navigate to ${item.route}`);
         }
       }}
@@ -156,21 +199,64 @@ export default function ProfileScreen() {
             <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{user?.email}</Text>
             
             <TouchableOpacity
-              style={[styles.subscriptionBadge, { backgroundColor: colors.primaryLight }]}
-              onPress={() => console.log('Upgrade to premium')}
+              style={[
+                styles.subscriptionBadge, 
+                { backgroundColor: user?.isPremium ? colors.warning + '20' : colors.primaryLight }
+              ]}
+              onPress={handleSubscriptionPress}
             >
-              <Text style={[styles.subscriptionText, { color: colors.primary }]}>
-                {user?.premium ? 'Premium Member' : 'Free Plan'}
+              {user?.isPremium && <Crown size={14} color={colors.warning} />}
+              <Text style={[
+                styles.subscriptionText, 
+                { 
+                  color: user?.isPremium ? colors.warning : colors.primary,
+                  marginLeft: user?.isPremium ? 4 : 0
+                }
+              ]}>
+                {user?.isPremium ? 'Premium Member' : 'Free Plan'}
               </Text>
             </TouchableOpacity>
+
+            {/* Gamification Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {gamificationData.level}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Level</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.success }]}>
+                  {gamificationData.points}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Points</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, { color: colors.warning }]}>
+                  {gamificationData.streakDays}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Streak</Text>
+              </View>
+            </View>
           </View>
           
           <TouchableOpacity
             style={[styles.editButton, { backgroundColor: colors.primary }]}
-            onPress={() => console.log('Edit profile')}
+            onPress={() => {
+              analyticsService.trackUserAction('edit_profile_pressed', 'profile');
+              console.log('Edit profile');
+            }}
           >
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Mission Statement */}
+        <View style={[styles.missionCard, { backgroundColor: colors.primaryLight }]}>
+          <Text style={[styles.missionTitle, { color: colors.primary }]}>Our Mission</Text>
+          <Text style={[styles.missionText, { color: colors.text }]}>
+            Rebuild was born from the experience of Hurricane Katrina survivors. We believe that everyone deserves access to comprehensive disaster recovery tools, regardless of their background or circumstances. Our app provides empathetic, AI-powered support to help underserved communities navigate the complex journey of rebuilding their lives after disaster strikes.
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -189,9 +275,15 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-          Version 1.0.0
+          Version 1.0.0 • Built with ❤️ for disaster survivors
         </Text>
       </ScrollView>
+
+      <PaywallScreen 
+        visible={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+      />
+      
       <BoltBadge />
     </SafeAreaView>
   );
@@ -210,7 +302,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   profilePicture: {
     width: 64,
@@ -231,14 +323,32 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subscriptionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 12,
   },
   subscriptionText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    fontSize: 10,
+    marginTop: 2,
   },
   editButton: {
     paddingHorizontal: 12,
@@ -248,6 +358,20 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: 'white',
     fontWeight: '600',
+  },
+  missionCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  missionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  missionText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   section: {
     marginBottom: 24,

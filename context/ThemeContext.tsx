@@ -34,11 +34,46 @@ const darkColors = {
   disabled: '#475569',
 };
 
+// High contrast colors for accessibility
+const highContrastColors = {
+  primary: '#0000FF', // Pure blue
+  primaryLight: '#E6F3FF',
+  secondary: '#0080FF', // Bright blue
+  accent: '#8000FF', // Purple
+  success: '#008000', // Pure green
+  warning: '#FF8000', // Orange
+  error: '#FF0000', // Pure red
+  background: '#FFFFFF',
+  surface: '#F0F0F0',
+  border: '#000000',
+  text: '#000000',
+  textSecondary: '#333333',
+  disabled: '#808080',
+};
+
+const highContrastDarkColors = {
+  primary: '#00FFFF', // Cyan
+  primaryLight: '#003333',
+  secondary: '#00AAFF', // Light blue
+  accent: '#FF00FF', // Magenta
+  success: '#00FF00', // Pure green
+  warning: '#FFAA00', // Orange
+  error: '#FF0000', // Pure red
+  background: '#000000',
+  surface: '#1A1A1A',
+  border: '#FFFFFF',
+  text: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  disabled: '#666666',
+};
+
 type ThemeContextType = {
   theme: 'light' | 'dark';
   colors: typeof lightColors;
+  highContrastMode: boolean;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
+  toggleHighContrastMode: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -46,6 +81,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const colorScheme = useColorScheme();
   const [theme, setTheme] = useState<'light' | 'dark'>(colorScheme === 'dark' ? 'dark' : 'light');
+  const [highContrastMode, setHighContrastMode] = useState(false);
 
   useEffect(() => {
     // Update theme when system theme changes
@@ -58,10 +94,28 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-  const colors = theme === 'light' ? lightColors : darkColors;
+  const toggleHighContrastMode = () => {
+    setHighContrastMode(!highContrastMode);
+  };
+
+  const getColors = () => {
+    if (highContrastMode) {
+      return theme === 'light' ? highContrastColors : highContrastDarkColors;
+    }
+    return theme === 'light' ? lightColors : darkColors;
+  };
+
+  const colors = getColors();
 
   return (
-    <ThemeContext.Provider value={{ theme, colors, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      colors, 
+      highContrastMode,
+      setTheme, 
+      toggleTheme,
+      toggleHighContrastMode
+    }}>
       {children}
     </ThemeContext.Provider>
   );
