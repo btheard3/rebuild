@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } f
 import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, AlertTriangle, Info, CheckCircle, X, Settings, MapPin, Clock } from 'lucide-react-native';
+import { Bell, TriangleAlert as AlertTriangle, Info, CircleCheck as CheckCircle, X, Settings, MapPin, Clock } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 type AlertType = 'emergency' | 'weather' | 'evacuation' | 'info' | 'recovery';

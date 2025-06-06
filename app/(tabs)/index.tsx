@@ -38,7 +38,7 @@ export default function HomeScreen() {
       description: 'Access important files', 
       icon: FileText, 
       color: colors.primary,
-      route: '/resources',
+      route: '/(tabs)/resources',
     },
     { 
       id: '3', 
@@ -46,7 +46,7 @@ export default function HomeScreen() {
       description: 'Locate nearby resources', 
       icon: MapPin, 
       color: colors.success,
-      route: '/map',
+      route: '/(tabs)/map',
     },
     { 
       id: '4', 
@@ -54,7 +54,7 @@ export default function HomeScreen() {
       description: 'Tools for wellbeing', 
       icon: Brain, 
       color: colors.accent,
-      route: '/wellness',
+      route: '/(tabs)/wellness',
     },
   ];
 
@@ -95,7 +95,7 @@ export default function HomeScreen() {
             marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
-        onPress={() => router.push(item.route)}
+        onPress={() => router.push(item.route as any)}
       >
         <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
           <item.icon size={24} color={item.color} />
@@ -124,7 +124,7 @@ export default function HomeScreen() {
             marginBottom: deviceType === 'mobile' ? 12 : 16,
           }
         ]}
-        onPress={() => router.push(item.route)}
+        onPress={() => router.push(item.route as any)}
       >
         <Image 
           source={{ uri: item.image }}
