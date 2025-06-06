@@ -4,7 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, CheckCircle, AlertTriangle, Download, Share } from 'lucide-react-native';
+import { ArrowLeft, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Download, Share } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 export default function DisasterPreparationScreen() {
