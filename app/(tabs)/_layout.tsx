@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import { useEffect } from 'react';
-import { Home, Search, MapPin, Bell, User, Video, Trophy } from 'lucide-react-native';
+import { Chrome as Home, Search, MapPin, Bell, User, Video, Trophy } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
