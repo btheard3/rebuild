@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
-import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@context/ThemeContext';
+import { useAuth } from '@context/AuthContext';
 import { router } from 'expo-router';
-import Card from '@/components/Card';
+import Card from '@components/Card';
 import { supabase } from '@services/supabase';
+import { RealtimePostgresInsertPayload } from '@supabase/supabase-js';
 
 type AlertPayload = {
   id: string;
@@ -22,54 +23,42 @@ export default function HomeScreen() {
       id: '1',
       title: 'Crisis Wizard',
       description: 'Start recovery planning',
-      icon: require('lucide-react-native').AlertTriangle,
+      icon: null, // Replace with a valid LucideIcon if needed
       color: colors.error,
       onPress: () => router.push('/recovery-wizard'),
-      key: 'crisis',
     },
     {
       id: '2',
-      title: 'Document Vault',
-      description: 'Access important files',
-      icon: require('lucide-react-native').FileText,
+      title: 'Wellness',
+      description: 'Track your mental state',
+      icon: null,
       color: colors.primary,
-      onPress: () => router.push('/resources'),
-      key: 'vault',
-    },
-    {
-      id: '3',
-      title: 'Find Help',
-      description: 'Locate nearby resources',
-      icon: require('lucide-react-native').MapPin,
-      color: colors.success,
-      onPress: () => router.push('/map'),
-      key: 'map',
-    },
-    {
-      id: '4',
-      title: 'Mental Health',
-      description: 'Tools for wellbeing',
-      icon: require('lucide-react-native').Brain,
-      color: colors.accent,
       onPress: () => router.push('/wellness'),
-      key: 'wellness',
     },
   ];
 
-  // 🔁 Supabase real-time alerts subscription
+  // 🔔 Supabase real-time alerts subscription
   useEffect(() => {
     const channel = supabase
       .channel('alerts')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'alerts',
         },
-        (payload) => {
+        (payload: RealtimePostgresInsertPayload<any>) => {
           const newAlert = payload.new as AlertPayload;
-          setAlerts((prev) => [...prev, newAlert]);
+
+          if (
+            newAlert &&
+            typeof newAlert.id === 'string' &&
+            typeof newAlert.message === 'string' &&
+            typeof newAlert.created_at === 'string'
+          ) {
+            setAlerts((prev) => [...prev, newAlert]);
+          }
         }
       )
       .subscribe();
@@ -85,71 +74,44 @@ export default function HomeScreen() {
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
-          <Text style={[styles.greeting, { color: colors.text }]}>
-            Hello, {user?.name?.split(' ')[0] || 'there'}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Let's continue your recovery journey
-          </Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Quick Actions
-        </Text>
-        <View style={styles.cardGroup}>
-          {quickActions.map((action) => (
-            <Card
-              key={action.key}
-              title={action.title}
-              description={action.description}
-              icon={action.icon}
-              color={action.color}
-              onPress={action.onPress}
-            />
-          ))}
-        </View>
-
-        {alerts.length > 0 && (
-          <View style={styles.alertSection}>
-            <Text style={[styles.alertTitle, { color: colors.error }]}>
-              ⚠️ {alerts.length} new alert{alerts.length > 1 ? 's' : ''}
+          <View>
+            <Text style={[styles.greeting, { color: colors.text }]}>
+              Hello, {user?.name?.split(' ')[0] || 'there'}
             </Text>
-            {alerts.map((alert) => (
-              <Text key={alert.id} style={{ color: colors.text }}>
-                {alert.message}
-              </Text>
-            ))}
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Let's continue your recovery journey
+            </Text>
           </View>
-        )}
+        </View>
+
+        {/* Example: Display real-time alerts */}
+        {alerts.map((alert) => (
+          <Text key={alert.id} style={{ color: colors.primary }}>
+            🔔 {alert.message}
+          </Text>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { padding: 16 },
-  header: { marginBottom: 20 },
-  greeting: { fontSize: 24, fontWeight: 'bold' },
-  subtitle: { fontSize: 16 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
+  container: {
+    flex: 1,
   },
-  cardGroup: {
-    gap: 12,
+  scroll: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  header: {
     marginBottom: 24,
   },
-  alertSection: {
-    marginTop: 24,
-    padding: 12,
-    backgroundColor: '#FFD6D6',
-    borderRadius: 8,
-  },
-  alertTitle: {
-    fontSize: 16,
+  greeting: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 16,
+    marginTop: 4,
   },
 });
