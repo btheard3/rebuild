@@ -1,9 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { router } from 'expo-router';
-import { WizardProvider, useWizard } from '@/components/RecoveryWizard/WizardContext';
+import {
+  WizardProvider,
+  useWizard,
+} from '@/components/RecoveryWizard/WizardContext';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react-native';
 import DisasterTypeStep from '@/components/RecoveryWizard/DisasterTypeStep';
 import PersonalInfoStep from '@/components/RecoveryWizard/PersonalInfoStep';
@@ -12,9 +23,10 @@ import ImmediateNeedsStep from '@/components/RecoveryWizard/ImmediateNeedsStep';
 import SummaryStep from '@/components/RecoveryWizard/SummaryStep';
 
 function WizardContent() {
+  const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { data, prevStep, nextStep, isComplete } = useWizard();
-  
+
   const renderStep = () => {
     switch (data.currentStep) {
       case 1:
@@ -37,43 +49,54 @@ function WizardContent() {
     'Personal Info',
     'Insurance',
     'Immediate Needs',
-    'Summary'
+    'Summary',
   ];
-  
+
   const renderStepIndicator = () => (
     <View style={styles.stepIndicatorContainer}>
       {steps.map((step, index) => (
         <React.Fragment key={index}>
-          <View 
+          <View
             style={[
-              styles.stepCircle, 
-              { 
-                backgroundColor: 
-                  data.currentStep > index + 1 
+              styles.stepCircle,
+              {
+                backgroundColor:
+                  data.currentStep > index + 1
                     ? colors.primary
-                    : data.currentStep === index + 1 
-                      ? colors.primary + '60'
-                      : colors.disabled 
-              }
+                    : data.currentStep === index + 1
+                    ? colors.primary + '99'
+                    : colors.disabled,
+              },
             ]}
           >
             {data.currentStep > index + 1 ? (
               <Check size={16} color="white" />
             ) : (
-              <Text style={[
-                styles.stepNumber, 
-                { color: data.currentStep === index + 1 ? 'white' : colors.textSecondary }
-              ]}>
+              <Text
+                style={[
+                  styles.stepNumber,
+                  {
+                    color:
+                      data.currentStep === index + 1
+                        ? 'white'
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
                 {index + 1}
               </Text>
             )}
           </View>
-          
           {index < steps.length - 1 && (
-            <View 
+            <View
               style={[
                 styles.stepLine,
-                { backgroundColor: data.currentStep > index + 1 ? colors.primary : colors.disabled }
+                {
+                  backgroundColor:
+                    data.currentStep > index + 1
+                      ? colors.primary
+                      : colors.disabled,
+                },
               ]}
             />
           )}
@@ -81,11 +104,13 @@ function WizardContent() {
       ))}
     </View>
   );
-  
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => {
             if (data.currentStep === 1) {
@@ -102,14 +127,21 @@ function WizardContent() {
         </Text>
         <View style={styles.placeholderButton} />
       </View>
-      
-      <View style={styles.content}>
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingHorizontal: width < 500 ? 16 : 40,
+            paddingBottom: 32,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         {renderStepIndicator()}
-        
-        <View style={styles.stepContent}>
-          {renderStep()}
-        </View>
-        
+
+        <View style={styles.stepContent}>{renderStep()}</View>
+
         <View style={styles.navigationContainer}>
           {!isComplete && (
             <TouchableOpacity
@@ -124,19 +156,17 @@ function WizardContent() {
               )}
             </TouchableOpacity>
           )}
-          
+
           {isComplete && (
             <TouchableOpacity
               style={[styles.nextButton, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/(tabs)')}
             >
-              <Text style={styles.nextButtonText}>
-                Return Home
-              </Text>
+              <Text style={styles.nextButtonText}>Return Home</Text>
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -175,14 +205,14 @@ const styles = StyleSheet.create({
     width: 40,
   },
   content: {
-    flex: 1,
-    padding: 16,
+    flexGrow: 1,
   },
   stepIndicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
+    flexWrap: 'wrap',
   },
   stepCircle: {
     width: 32,
@@ -200,10 +230,10 @@ const styles = StyleSheet.create({
     width: 24,
   },
   stepContent: {
-    flex: 1,
+    flexGrow: 1,
   },
   navigationContainer: {
-    marginTop: 16,
+    marginTop: 24,
   },
   nextButton: {
     flexDirection: 'row',
