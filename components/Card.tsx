@@ -1,69 +1,87 @@
-import React, { ReactNode } from 'react';
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
+import { useTheme } from '@context/ThemeContext';
+import type { LucideIcon } from 'lucide-react-native';
 
-interface CardProps {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-  elevation?: 0 | 1 | 2 | 3;
-}
+export type CardProps = {
+  title: string;
+  description: string;
+  icon?: LucideIcon;
+  color: string;
+  onPress: () => void;
+};
 
-export default function Card({ children, style, elevation = 1 }: CardProps) {
+export default function Card({
+  title,
+  description,
+  icon: Icon,
+  color,
+  onPress,
+}: CardProps) {
   const { colors } = useTheme();
-  
-  const getElevationStyle = () => {
-    switch (elevation) {
-      case 0:
-        return {};
-      case 1:
-        return {
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 2,
-        };
-      case 2:
-        return {
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 4,
-        };
-      case 3:
-        return {
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.2,
-          shadowRadius: 16,
-          elevation: 8,
-        };
-      default:
-        return {};
-    }
-  };
-  
+  const { width } = useWindowDimensions();
+
   return (
-    <View
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
       style={[
         styles.card,
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          shadowColor: colors.text,
-          ...getElevationStyle(),
+          flexDirection: width < 600 ? 'column' : 'row',
         },
-        style,
       ]}
     >
-      {children}
-    </View>
+      {Icon && (
+        <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+          <Icon size={24} color={color} />
+        </View>
+      )}
+      <View style={styles.textContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          {description}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  textContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
