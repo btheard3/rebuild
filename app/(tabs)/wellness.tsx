@@ -3,10 +3,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image,
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/context/GamificationContext';
-import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
+import { useResponsive } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyticsService } from '@/services/analyticsService';
 import { elevenLabsService } from '@/services/elevenLabsService';
+import HomeButton from '@/components/HomeButton';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { BookOpen, Clock, VolumeX, Volume2, Pencil, ChartBar as BarChart, Crown, Lock } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
@@ -15,7 +18,7 @@ export default function WellnessScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { addPoints, completeAchievement } = useGamification();
-  const { deviceType } = useResponsive();
+  const { deviceType, padding } = useResponsive();
   const [meditationTime, setMeditationTime] = useState(5);
   const [isMeditating, setIsMeditating] = useState(false);
   const [countdownValue, setCountdownValue] = useState(5 * 60);
@@ -24,14 +27,6 @@ export default function WellnessScreen() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-
-  const getPadding = getResponsiveValue(16, 24, 32);
-  const getMaxWidth = getResponsiveValue('100%', 600, 800);
-  const getToolCardWidth = getResponsiveValue('100%', '48%', '32%');
-  
-  const padding = getPadding(deviceType);
-  const maxWidth = getMaxWidth(deviceType);
-  const toolCardWidth = getToolCardWidth(deviceType);
 
   useEffect(() => {
     analyticsService.trackScreen('wellness');
@@ -179,12 +174,26 @@ export default function WellnessScreen() {
         { 
           borderColor: selectedMood === option.id ? colors.primary : colors.border,
           backgroundColor: selectedMood === option.id ? colors.primaryLight : colors.surface,
+          width: deviceType === 'mobile' ? '18%' : 'auto',
+          minWidth: deviceType === 'mobile' ? undefined : 80,
+          paddingHorizontal: deviceType === 'mobile' ? 8 : 16,
+          paddingVertical: deviceType === 'mobile' ? 12 : 16,
         }
       ]}
       onPress={() => handleMoodSelection(option.id)}
     >
-      <Text style={styles.moodEmoji}>{option.emoji}</Text>
-      <Text style={[styles.moodLabel, { color: colors.text }]}>{option.label}</Text>
+      <Text style={[styles.moodEmoji, { fontSize: deviceType === 'mobile' ? 28 : 32 }]}>
+        {option.emoji}
+      </Text>
+      <Text style={[
+        styles.moodLabel, 
+        { 
+          color: colors.text,
+          fontSize: deviceType === 'mobile' ? 12 : 14,
+        }
+      ]}>
+        {option.label}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -196,8 +205,7 @@ export default function WellnessScreen() {
         { 
           backgroundColor: colors.surface, 
           borderColor: colors.border,
-          width: toolCardWidth,
-          marginBottom: deviceType === 'mobile' ? 12 : 16,
+          padding: deviceType === 'mobile' ? 16 : 20,
         }
       ]}
       onPress={() => {
@@ -207,11 +215,33 @@ export default function WellnessScreen() {
         console.log(`Navigate to ${tool.route}`);
       }}
     >
-      <View style={[styles.toolIconContainer, { backgroundColor: tool.color + '20' }]}>
-        <tool.icon size={24} color={tool.color} />
+      <View style={[
+        styles.toolIconContainer, 
+        { 
+          backgroundColor: tool.color + '20',
+          width: deviceType === 'mobile' ? 48 : 56,
+          height: deviceType === 'mobile' ? 48 : 56,
+          borderRadius: deviceType === 'mobile' ? 24 : 28,
+        }
+      ]}>
+        <tool.icon size={deviceType === 'mobile' ? 24 : 28} color={tool.color} />
       </View>
-      <Text style={[styles.toolTitle, { color: colors.text }]}>{tool.title}</Text>
-      <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+      <Text style={[
+        styles.toolTitle, 
+        { 
+          color: colors.text,
+          fontSize: deviceType === 'mobile' ? 16 : 18,
+        }
+      ]}>
+        {tool.title}
+      </Text>
+      <Text style={[
+        styles.toolDescription, 
+        { 
+          color: colors.textSecondary,
+          fontSize: deviceType === 'mobile' ? 13 : 14,
+        }
+      ]}>
         {tool.description}
       </Text>
     </TouchableOpacity>
@@ -219,181 +249,211 @@ export default function WellnessScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>How are you feeling?</Text>
-          <View style={[
-            styles.moodContainer,
-            deviceType === 'desktop' ? styles.moodContainerDesktop : null
-          ]}>
-            {moodOptions.map(renderMoodOption)}
+      <HomeButton />
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: deviceType === 'mobile' ? 80 : 100 }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <ResponsiveContainer>
+          <View style={[styles.section, { marginTop: deviceType === 'mobile' ? 70 : 80 }]}>
+            <Text style={[
+              styles.sectionTitle, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 18 : 22,
+              }
+            ]}>
+              How are you feeling?
+            </Text>
+            <View style={[
+              styles.moodContainer,
+              deviceType !== 'mobile' ? styles.moodContainerDesktop : null
+            ]}>
+              {moodOptions.map(renderMoodOption)}
+            </View>
+            
+            {selectedMood && (
+              <View style={styles.affirmationSection}>
+                <TouchableOpacity
+                  style={[
+                    styles.affirmationButton,
+                    { 
+                      backgroundColor: user?.isPremium ? colors.accent : colors.disabled,
+                      paddingHorizontal: deviceType === 'mobile' ? 20 : 24,
+                      paddingVertical: deviceType === 'mobile' ? 12 : 14,
+                    }
+                  ]}
+                  onPress={handleListenToAffirmation}
+                  disabled={isPlayingAudio}
+                >
+                  {!user?.isPremium && <Crown size={16} color="white" />}
+                  <Text style={[
+                    styles.affirmationButtonText, 
+                    { 
+                      marginLeft: !user?.isPremium ? 8 : 0,
+                      fontSize: deviceType === 'mobile' ? 14 : 16,
+                    }
+                  ]}>
+                    {isPlayingAudio ? 'Playing...' : 'Listen to Affirmation'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-          
-          {selectedMood && (
-            <View style={styles.affirmationSection}>
-              <TouchableOpacity
-                style={[
-                  styles.affirmationButton,
-                  { 
-                    backgroundColor: user?.isPremium ? colors.accent : colors.disabled,
-                  }
-                ]}
-                onPress={handleListenToAffirmation}
-                disabled={isPlayingAudio}
-              >
-                {!user?.isPremium && <Crown size={16} color="white" />}
-                <Text style={[styles.affirmationButtonText, { marginLeft: !user?.isPremium ? 8 : 0 }]}>
-                  {isPlayingAudio ? 'Playing...' : 'Listen to Affirmation'}
-                </Text>
+
+          <View style={styles.section}>
+            <Text style={[
+              styles.sectionTitle, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 18 : 22,
+              }
+            ]}>
+              Wellness Tools
+            </Text>
+            <ResponsiveGrid minItemWidth={250} gap={deviceType === 'mobile' ? 12 : 16}>
+              {wellnessTools.map(renderWellnessTool)}
+            </ResponsiveGrid>
+          </View>
+
+          <View style={[styles.meditationCard, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}>
+            <View style={styles.meditationHeader}>
+              <Text style={[styles.meditationTitle, { color: colors.text }]}>Meditation Timer</Text>
+              <TouchableOpacity onPress={() => setSoundEnabled(!soundEnabled)}>
+                {soundEnabled ? (
+                  <Volume2 size={20} color={colors.accent} />
+                ) : (
+                  <VolumeX size={20} color={colors.textSecondary} />
+                )}
               </TouchableOpacity>
             </View>
-          )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Wellness Tools</Text>
-          <View style={[
-            styles.toolsContainer,
-            deviceType !== 'mobile' ? styles.gridContainer : null
-          ]}>
-            {wellnessTools.map(renderWellnessTool)}
+            {isMeditating ? (
+              <View style={styles.meditationTimerContainer}>
+                <Text style={[styles.countdownText, { color: colors.accent }]}>
+                  {formatTime(countdownValue)}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.meditationButton, { backgroundColor: colors.error }]}
+                  onPress={() => {
+                    setIsMeditating(false);
+                    analyticsService.trackEvent('meditation_stopped', { duration: meditationTime * 60 - countdownValue });
+                  }}
+                >
+                  <Text style={styles.meditationButtonText}>Stop</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.meditationSetupContainer}>
+                <Text style={[styles.meditationLabel, { color: colors.text }]}>
+                  Set meditation duration:
+                </Text>
+                <View style={styles.timePickerContainer}>
+                  {[5, 10, 15, 20].map(time => (
+                    <TouchableOpacity
+                      key={time}
+                      style={[
+                        styles.timeOption,
+                        { 
+                          backgroundColor: meditationTime === time ? colors.accent : 'transparent',
+                          borderColor: colors.accent,
+                        }
+                      ]}
+                      onPress={() => {
+                        setMeditationTime(time);
+                        setCountdownValue(time * 60);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.timeOptionText,
+                          { color: meditationTime === time ? 'white' : colors.accent }
+                        ]}
+                      >
+                        {time} min
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={[styles.meditationButton, { backgroundColor: colors.accent }]}
+                  onPress={() => {
+                    setIsMeditating(true);
+                    analyticsService.trackEvent('meditation_started', { duration: meditationTime });
+                    addPoints(20, 'Started meditation session');
+                  }}
+                >
+                  <Text style={styles.meditationButtonText}>Start Meditation</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        </View>
 
-        <View style={[styles.meditationCard, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}>
-          <View style={styles.meditationHeader}>
-            <Text style={[styles.meditationTitle, { color: colors.text }]}>Meditation Timer</Text>
-            <TouchableOpacity onPress={() => setSoundEnabled(!soundEnabled)}>
-              {soundEnabled ? (
-                <Volume2 size={20} color={colors.accent} />
-              ) : (
-                <VolumeX size={20} color={colors.textSecondary} />
-              )}
+          <View style={[styles.journalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.journalHeader}>
+              <Text style={[styles.journalTitle, { color: colors.text }]}>Daily Journal</Text>
+              <View style={styles.journalActions}>
+                {user?.isPremium ? (
+                  <TouchableOpacity
+                    onPress={handleReadJournalAloud}
+                    disabled={isPlayingAudio || !journalEntry.trim()}
+                    style={[styles.journalActionButton, { opacity: (!journalEntry.trim() || isPlayingAudio) ? 0.5 : 1 }]}
+                  >
+                    <Volume2 size={16} color={colors.primary} />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => setShowPaywall(true)}
+                    style={styles.journalActionButton}
+                  >
+                    <Lock size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                <Pencil size={20} color={colors.success} />
+              </View>
+            </View>
+            
+            <TextInput
+              style={[styles.journalInput, { color: colors.text, borderColor: colors.border }]}
+              placeholder="Write your thoughts for today..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={4}
+              value={journalEntry}
+              onChangeText={setJournalEntry}
+            />
+            
+            <TouchableOpacity 
+              style={[
+                styles.journalButton, 
+                { 
+                  backgroundColor: journalEntry.trim() ? colors.success : colors.disabled 
+                }
+              ]}
+              onPress={handleJournalSave}
+              disabled={!journalEntry.trim()}
+            >
+              <Text style={styles.journalButtonText}>Save Entry</Text>
             </TouchableOpacity>
           </View>
 
-          {isMeditating ? (
-            <View style={styles.meditationTimerContainer}>
-              <Text style={[styles.countdownText, { color: colors.accent }]}>
-                {formatTime(countdownValue)}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Affirmation</Text>
+            <View style={[styles.affirmationCard, { backgroundColor: colors.primaryLight }]}>
+              <Image 
+                source={{ uri: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg' }}
+                style={styles.affirmationImage}
+              />
+              <View style={styles.affirmationOverlay} />
+              <Text style={styles.affirmationText}>
+                "You are resilient and capable of overcoming any challenge that comes your way."
               </Text>
-              <TouchableOpacity
-                style={[styles.meditationButton, { backgroundColor: colors.error }]}
-                onPress={() => {
-                  setIsMeditating(false);
-                  analyticsService.trackEvent('meditation_stopped', { duration: meditationTime * 60 - countdownValue });
-                }}
-              >
-                <Text style={styles.meditationButtonText}>Stop</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.meditationSetupContainer}>
-              <Text style={[styles.meditationLabel, { color: colors.text }]}>
-                Set meditation duration:
-              </Text>
-              <View style={styles.timePickerContainer}>
-                {[5, 10, 15, 20].map(time => (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      styles.timeOption,
-                      { 
-                        backgroundColor: meditationTime === time ? colors.accent : 'transparent',
-                        borderColor: colors.accent,
-                      }
-                    ]}
-                    onPress={() => {
-                      setMeditationTime(time);
-                      setCountdownValue(time * 60);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.timeOptionText,
-                        { color: meditationTime === time ? 'white' : colors.accent }
-                      ]}
-                    >
-                      {time} min
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={[styles.meditationButton, { backgroundColor: colors.accent }]}
-                onPress={() => {
-                  setIsMeditating(true);
-                  analyticsService.trackEvent('meditation_started', { duration: meditationTime });
-                  addPoints(20, 'Started meditation session');
-                }}
-              >
-                <Text style={styles.meditationButtonText}>Start Meditation</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <View style={[styles.journalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.journalHeader}>
-            <Text style={[styles.journalTitle, { color: colors.text }]}>Daily Journal</Text>
-            <View style={styles.journalActions}>
-              {user?.isPremium ? (
-                <TouchableOpacity
-                  onPress={handleReadJournalAloud}
-                  disabled={isPlayingAudio || !journalEntry.trim()}
-                  style={[styles.journalActionButton, { opacity: (!journalEntry.trim() || isPlayingAudio) ? 0.5 : 1 }]}
-                >
-                  <Volume2 size={16} color={colors.primary} />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => setShowPaywall(true)}
-                  style={styles.journalActionButton}
-                >
-                  <Lock size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-              <Pencil size={20} color={colors.success} />
             </View>
           </View>
-          
-          <TextInput
-            style={[styles.journalInput, { color: colors.text, borderColor: colors.border }]}
-            placeholder="Write your thoughts for today..."
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            numberOfLines={4}
-            value={journalEntry}
-            onChangeText={setJournalEntry}
-          />
-          
-          <TouchableOpacity 
-            style={[
-              styles.journalButton, 
-              { 
-                backgroundColor: journalEntry.trim() ? colors.success : colors.disabled 
-              }
-            ]}
-            onPress={handleJournalSave}
-            disabled={!journalEntry.trim()}
-          >
-            <Text style={styles.journalButtonText}>Save Entry</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Affirmation</Text>
-          <View style={[styles.affirmationCard, { backgroundColor: colors.primaryLight }]}>
-            <Image 
-              source={{ uri: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg' }}
-              style={styles.affirmationImage}
-            />
-            <View style={styles.affirmationOverlay} />
-            <Text style={styles.affirmationText}>
-              "You are resilient and capable of overcoming any challenge that comes your way."
-            </Text>
-          </View>
-        </View>
+        </ResponsiveContainer>
       </ScrollView>
 
       <PaywallScreen 
@@ -411,13 +471,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80,
+    flexGrow: 1,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
   },
@@ -426,6 +485,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     marginBottom: 16,
+    gap: 8,
   },
   moodContainerDesktop: {
     justifyContent: 'center',
@@ -433,17 +493,13 @@ const styles = StyleSheet.create({
   },
   moodOption: {
     alignItems: 'center',
-    width: '18%',
-    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
   },
   moodEmoji: {
-    fontSize: 28,
     marginBottom: 4,
   },
   moodLabel: {
-    fontSize: 12,
     fontWeight: '500',
   },
   affirmationSection: {
@@ -452,44 +508,32 @@ const styles = StyleSheet.create({
   affirmationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
     borderRadius: 24,
   },
   affirmationButtonText: {
     color: 'white',
-    fontSize: 14,
     fontWeight: '600',
   },
-  toolsContainer: {
-    gap: 12,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
   toolCard: {
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
+    alignItems: 'center',
+    minHeight: 140,
+    justifyContent: 'center',
   },
   toolIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   toolTitle: {
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    textAlign: 'center',
   },
   toolDescription: {
-    fontSize: 13,
     lineHeight: 18,
+    textAlign: 'center',
   },
   meditationCard: {
     borderRadius: 12,
