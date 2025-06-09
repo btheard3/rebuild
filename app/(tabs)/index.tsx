@@ -4,11 +4,15 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import Card from '@/components/Card';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import { useResponsive } from '@/hooks/useResponsive';
 import { Heart, BookOpen, MapPin, Video, Trophy, Bell } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { deviceType, padding } = useResponsive();
   const [alerts, setAlerts] = useState<any[]>([]);
 
   const quickActions = [
@@ -99,64 +103,157 @@ export default function HomeScreen() {
     initializeSupabase();
   }, []);
 
+  const getHeaderFontSize = () => {
+    switch (deviceType) {
+      case 'mobile':
+        return 28;
+      case 'tablet':
+        return 32;
+      case 'desktop':
+        return 36;
+      case 'large':
+        return 40;
+      default:
+        return 28;
+    }
+  };
+
+  const getSectionTitleSize = () => {
+    switch (deviceType) {
+      case 'mobile':
+        return 22;
+      case 'tablet':
+        return 24;
+      case 'desktop':
+        return 26;
+      case 'large':
+        return 28;
+      default:
+        return 22;
+    }
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>
-              Hello, {user?.name?.split(' ')[0] || 'there'}
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: deviceType === 'mobile' ? 40 : 60 }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <ResponsiveContainer>
+          <View style={[styles.header, { marginTop: deviceType === 'mobile' ? 12 : 20 }]}>
+            <View>
+              <Text style={[
+                styles.greeting, 
+                { 
+                  color: colors.text,
+                  fontSize: getHeaderFontSize(),
+                }
+              ]}>
+                Hello, {user?.name?.split(' ')[0] || 'there'}
+              </Text>
+              <Text style={[
+                styles.subtitle, 
+                { 
+                  color: colors.textSecondary,
+                  fontSize: deviceType === 'mobile' ? 16 : 18,
+                }
+              ]}>
+                Let's continue your recovery journey
+              </Text>
+            </View>
+          </View>
+
+          {/* Real-time alerts display */}
+          {alerts.map((alert) => (
+            <View 
+              key={alert.id} 
+              style={[
+                styles.alertBanner, 
+                { 
+                  backgroundColor: colors.primaryLight,
+                  marginBottom: 16,
+                }
+              ]}
+            >
+              <Bell size={16} color={colors.primary} />
+              <Text style={[styles.alertText, { color: colors.primary }]}>
+                {alert.message}
+              </Text>
+            </View>
+          ))}
+
+          {/* Quick Actions Section */}
+          <View style={styles.quickActionsSection}>
+            <Text style={[
+              styles.sectionTitle, 
+              { 
+                color: colors.text,
+                fontSize: getSectionTitleSize(),
+              }
+            ]}>
+              Quick Actions
             </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Let's continue your recovery journey
+            <Text style={[
+              styles.sectionSubtitle, 
+              { 
+                color: colors.textSecondary,
+                fontSize: deviceType === 'mobile' ? 16 : 18,
+                marginBottom: deviceType === 'mobile' ? 20 : 24,
+              }
+            ]}>
+              Access your most important recovery tools
+            </Text>
+            
+            <ResponsiveGrid minItemWidth={280} gap={deviceType === 'mobile' ? 12 : 16}>
+              {quickActions.map((action) => (
+                <Card
+                  key={action.id}
+                  title={action.title}
+                  description={action.description}
+                  icon={action.icon}
+                  color={action.color}
+                  onPress={action.onPress}
+                />
+              ))}
+            </ResponsiveGrid>
+          </View>
+
+          {/* Welcome Message for New Users */}
+          <View style={[
+            styles.welcomeCard, 
+            { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              padding: deviceType === 'mobile' ? 20 : 24,
+              marginTop: deviceType === 'mobile' ? 32 : 40,
+            }
+          ]}>
+            <Text style={[
+              styles.welcomeTitle, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 20 : 22,
+              }
+            ]}>
+              Welcome to Rebuild
+            </Text>
+            <Text style={[
+              styles.welcomeText, 
+              { 
+                color: colors.textSecondary,
+                fontSize: deviceType === 'mobile' ? 16 : 17,
+                lineHeight: deviceType === 'mobile' ? 24 : 26,
+              }
+            ]}>
+              Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
             </Text>
           </View>
-        </View>
-
-        {/* Real-time alerts display */}
-        {alerts.map((alert) => (
-          <View key={alert.id} style={[styles.alertBanner, { backgroundColor: colors.primaryLight }]}>
-            <Bell size={16} color={colors.primary} />
-            <Text style={[styles.alertText, { color: colors.primary }]}>
-              {alert.message}
-            </Text>
-          </View>
-        ))}
-
-        {/* Quick Actions Section */}
-        <View style={styles.quickActionsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Quick Actions
-          </Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Access your most important recovery tools
-          </Text>
-          
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => (
-              <Card
-                key={action.id}
-                title={action.title}
-                description={action.description}
-                icon={action.icon}
-                color={action.color}
-                onPress={action.onPress}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Welcome Message for New Users */}
-        <View style={[styles.welcomeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-            Welcome to Rebuild
-          </Text>
-          <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
-            Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
-          </Text>
-        </View>
+        </ResponsiveContainer>
       </ScrollView>
     </SafeAreaView>
   );
@@ -167,19 +264,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     marginBottom: 24,
-    marginTop: 12,
   },
   greeting: {
-    fontSize: 28,
     fontWeight: 'bold',
   },
   subtitle: {
-    fontSize: 16,
     marginTop: 4,
   },
   alertBanner: {
@@ -187,7 +280,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
     gap: 8,
   },
   alertText: {
@@ -199,30 +291,22 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   sectionSubtitle: {
-    fontSize: 16,
     marginBottom: 20,
   },
-  quickActionsGrid: {
-    gap: 12,
-  },
   welcomeCard: {
-    padding: 20,
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 20,
   },
   welcomeTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
   },
   welcomeText: {
-    fontSize: 16,
     lineHeight: 24,
   },
 });
