@@ -6,10 +6,15 @@ import { Platform } from 'react-native';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+console.log('🔐 URL:', supabaseUrl);
+console.log('🔐 KEY:', supabaseAnonKey);
+
 // Enhanced error handling and validation
 const validateEnvironmentVariables = () => {
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase environment variables missing. Some features may not work.');
+    console.warn(
+      'Supabase environment variables missing. Some features may not work.'
+    );
     return false;
   }
 
@@ -35,30 +40,30 @@ const createMockClient = () => ({
   auth: {
     signUp: async (credentials: any) => {
       console.log('Mock signUp:', credentials.email);
-      return { 
-        data: { 
-          user: { 
-            id: 'mock-user-id', 
+      return {
+        data: {
+          user: {
+            id: 'mock-user-id',
             email: credentials.email,
-            user_metadata: { full_name: credentials.options?.data?.full_name }
-          }, 
-          session: { access_token: 'mock-token' } 
-        }, 
-        error: null 
+            user_metadata: { full_name: credentials.options?.data?.full_name },
+          },
+          session: { access_token: 'mock-token' },
+        },
+        error: null,
       };
     },
     signInWithPassword: async (credentials: any) => {
       console.log('Mock signIn:', credentials.email);
-      return { 
-        data: { 
-          user: { 
-            id: 'mock-user-id', 
+      return {
+        data: {
+          user: {
+            id: 'mock-user-id',
             email: credentials.email,
-            user_metadata: { full_name: 'Mock User' }
-          }, 
-          session: { access_token: 'mock-token' } 
-        }, 
-        error: null 
+            user_metadata: { full_name: 'Mock User' },
+          },
+          session: { access_token: 'mock-token' },
+        },
+        error: null,
       };
     },
     signOut: async () => {
@@ -71,12 +76,12 @@ const createMockClient = () => ({
     },
     onAuthStateChange: (callback: any) => {
       console.log('Mock onAuthStateChange listener added');
-      return { 
-        data: { 
-          subscription: { 
-            unsubscribe: () => console.log('Mock auth listener unsubscribed') 
-          } 
-        } 
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => console.log('Mock auth listener unsubscribed'),
+          },
+        },
       };
     },
     getUser: async () => {
@@ -115,7 +120,9 @@ if (validateEnvironmentVariables() && supabaseUrl && supabaseAnonKey) {
     supabase = createMockClient();
   }
 } else {
-  console.warn('⚠️ Using mock Supabase client due to missing/invalid environment variables');
+  console.warn(
+    '⚠️ Using mock Supabase client due to missing/invalid environment variables'
+  );
   supabase = createMockClient();
 }
 
