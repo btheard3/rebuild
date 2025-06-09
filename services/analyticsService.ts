@@ -56,8 +56,10 @@ class AnalyticsService {
   }
 
   private async sendToAnalytics(event: any) {
-    if (!this.apiUrl) {
-      // Just log to console if no analytics URL is configured
+    // Check if analytics URL is properly configured (not empty and not a placeholder)
+    if (!this.apiUrl || this.apiUrl.includes('your_analytics_api_url_here')) {
+      // Just log to console if no analytics URL is configured or it's a placeholder
+      console.log('Analytics URL not configured, skipping network request');
       return;
     }
 
