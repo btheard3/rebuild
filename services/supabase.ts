@@ -5,6 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+// Declare the supabase variable at the top level
+let supabase: any;
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase URL or Anon Key missing in environment variables. Some features may not work.');
   
@@ -29,7 +32,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
     },
   };
   
-  export const supabase = mockClient as any;
+  supabase = mockClient;
 } else {
-  export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
+
+// Export at the top level
+export { supabase };
