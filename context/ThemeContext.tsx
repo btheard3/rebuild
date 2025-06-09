@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { accessibilityService } from '@/services/accessibilityService';
 
-// Define color palette
+// Define color palette with accessibility considerations
 const lightColors = {
-  primary: '#2563EB', // Blue
+  primary: '#2563EB', // Blue - WCAG AA compliant
   primaryLight: '#DBEAFE',
   secondary: '#0EA5E9', // Sky blue
   accent: '#7C3AED', // Purple
@@ -16,6 +17,7 @@ const lightColors = {
   text: '#1E293B',
   textSecondary: '#64748B',
   disabled: '#CBD5E1',
+  info: '#3B82F6',
 };
 
 const darkColors = {
@@ -32,10 +34,11 @@ const darkColors = {
   text: '#F8FAFC',
   textSecondary: '#94A3B8',
   disabled: '#475569',
+  info: '#60A5FA',
 };
 
 // High contrast colors for accessibility
-const highContrastColors = {
+const highContrastLightColors = {
   primary: '#0000FF', // Pure blue
   primaryLight: '#E6F3FF',
   secondary: '#0080FF', // Bright blue
@@ -49,6 +52,7 @@ const highContrastColors = {
   text: '#000000',
   textSecondary: '#333333',
   disabled: '#808080',
+  info: '#0000FF',
 };
 
 const highContrastDarkColors = {
@@ -65,15 +69,22 @@ const highContrastDarkColors = {
   text: '#FFFFFF',
   textSecondary: '#CCCCCC',
   disabled: '#666666',
+  info: '#00FFFF',
 };
 
 type ThemeContextType = {
   theme: 'light' | 'dark';
   colors: typeof lightColors;
   highContrastMode: boolean;
+  largeTextMode: boolean;
+  reducedMotionMode: boolean;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
   toggleHighContrastMode: () => void;
+  toggleLargeTextMode: () => void;
+  getScaledFontSize: (baseFontSize: number) => number;
+  getAnimationDuration: (defaultDuration: number) => number;
+  isAccessibilityEnabled: (feature: string) => boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -82,6 +93,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const colorScheme = useColorScheme();
   const [theme, setTheme] = useState<'light' | 'dark'>(colorScheme === 'dark' ? 'dark' : 'light');
   const [highContrastMode, setHighContrastMode] = useState(false);
+  const [largeTextMode, setLargeTextMode] = useState(false);
+  const [reducedMotionMode, setReducedMotionMode] = useState(false);
 
   useEffect(() => {
     // Update theme when system theme changes
@@ -89,6 +102,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setTheme(colorScheme);
     }
   }, [colorScheme]);
+
+  useEffect(() => {
+    // Listen for accessibility feature changes
+    const unsubscribe = accessibilityService.onFeaturesChange((features) => {
+      setHighContrastMode(features.highContrast);
+      setLargeTextMode(features.largeText);
+      setReducedMotionMode(features.reducedMotion);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -98,11 +122,39 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setHighContrastMode(!highContrastMode);
   };
 
+  const toggleLargeTextMode = () => {
+    setLargeTextMode(!largeTextMode);
+  };
+
   const getColors = () => {
     if (highContrastMode) {
-      return theme === 'light' ? highContrastColors : highContrastDarkColors;
+      return theme === 'light' ? highContrastLightColors : highContrastDarkColors;
     }
-    return theme === 'light' ? lightColors : darkColors;
+    
+    const baseColors = theme === 'light' ? lightColors : darkColors;
+    return accessibilityService.getAccessibleColors(baseColors);
+  };
+
+  const getScaledFontSize = (baseFontSize: number): number => {
+    let scaledSize = baseFontSize;
+    
+    if (largeTextMode) {
+      scaledSize *= 1.2;
+    }
+    
+    return accessibilityService.getScaledFontSize(scaledSize);
+  };
+
+  const getAnimationDuration = (defaultDuration: number): number => {
+    if (reducedMotionMode) {
+      return 0;
+    }
+    return accessibilityService.getAnimationDuration(defaultDuration);
+  };
+
+  const isAccessibilityEnabled = (feature: string): boolean => {
+    const features = accessibilityService.getFeatures();
+    return features[feature as keyof typeof features] || false;
   };
 
   const colors = getColors();
@@ -112,9 +164,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       theme, 
       colors, 
       highContrastMode,
+      largeTextMode,
+      reducedMotionMode,
       setTheme, 
       toggleTheme,
-      toggleHighContrastMode
+      toggleHighContrastMode,
+      toggleLargeTextMode,
+      getScaledFontSize,
+      getAnimationDuration,
+      isAccessibilityEnabled,
     }}>
       {children}
     </ThemeContext.Provider>
