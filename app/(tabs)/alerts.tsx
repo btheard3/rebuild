@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Bell, AlertTriangle, Info, CheckCircle } from 'lucide-react-native';
+import { Bell, TriangleAlert as AlertTriangle, Info, CircleCheck as CheckCircle } from 'lucide-react-native';
 
 export default function AlertsScreen() {
   const alerts = [
