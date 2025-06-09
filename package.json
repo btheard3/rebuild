@@ -55,6 +55,8 @@
     "react-native-video": "^6.4.5",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
+    "react-native-webrtc": "^124.0.4",
+    "socket.io-client": "^4.7.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {
