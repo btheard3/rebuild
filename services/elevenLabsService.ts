@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-audio';
 
 class ElevenLabsService {
   private apiKey: string;
@@ -48,15 +48,15 @@ class ElevenLabsService {
 
   async playAudio(audioUrl: string): Promise<void> {
     try {
-      const { sound } = await Audio.Sound.createAsync(
+      const sound = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true }
       );
       
       // Clean up sound after playing
-      sound.setOnPlaybackStatusUpdate((status) => {
+      sound.sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
+          sound.sound.unloadAsync();
         }
       });
     } catch (error) {

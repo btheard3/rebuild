@@ -27,7 +27,7 @@ class RevenueCatService {
 
     // Check if Purchases is available
     if (!Purchases) {
-      console.warn('RevenueCat Purchases module not available');
+      console.warn('RevenueCat Purchases module not available - this is expected in development/web environments');
       return;
     }
 
@@ -52,7 +52,7 @@ class RevenueCatService {
     }
 
     if (!Purchases) {
-      console.warn('RevenueCat Purchases module not available');
+      console.warn('RevenueCat Purchases module not available - this is expected in development/web environments');
       return false;
     }
 

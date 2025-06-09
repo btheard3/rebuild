@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { analyticsService } from './analyticsService';
+import React from 'react';
 
 interface PerformanceMetrics {
   loadTime: number;
@@ -28,7 +29,7 @@ class PerformanceService {
   };
 
   private performanceEntries: PerformanceEntry[] = [];
-  private observers: PerformanceObserver[] = [];
+  private observers: any[] = [];
 
   constructor() {
     this.initializePerformanceMonitoring();
@@ -41,73 +42,77 @@ class PerformanceService {
   }
 
   private setupWebPerformanceMonitoring() {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    // Monitor navigation timing
-    if ('PerformanceObserver' in window) {
-      const navigationObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          if (entry.entryType === 'navigation') {
-            const navEntry = entry as PerformanceNavigationTiming;
-            this.metrics.loadTime = navEntry.loadEventEnd - navEntry.navigationStart;
-            this.trackMetric('page_load_time', this.metrics.loadTime);
-          }
+    try {
+      // Monitor navigation timing
+      if ('PerformanceObserver' in window) {
+        const navigationObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach((entry) => {
+            if (entry.entryType === 'navigation') {
+              const navEntry = entry as PerformanceNavigationTiming;
+              this.metrics.loadTime = navEntry.loadEventEnd - navEntry.navigationStart;
+              this.trackMetric('page_load_time', this.metrics.loadTime);
+            }
+          });
         });
-      });
 
-      try {
-        navigationObserver.observe({ entryTypes: ['navigation'] });
-        this.observers.push(navigationObserver);
-      } catch (error) {
-        console.warn('Navigation timing not supported:', error);
+        try {
+          navigationObserver.observe({ entryTypes: ['navigation'] });
+          this.observers.push(navigationObserver);
+        } catch (error) {
+          console.warn('Navigation timing not supported:', error);
+        }
+
+        // Monitor resource timing
+        const resourceObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach((entry) => {
+            if (entry.entryType === 'resource') {
+              const resourceEntry = entry as PerformanceResourceTiming;
+              this.trackResourcePerformance(resourceEntry);
+            }
+          });
+        });
+
+        try {
+          resourceObserver.observe({ entryTypes: ['resource'] });
+          this.observers.push(resourceObserver);
+        } catch (error) {
+          console.warn('Resource timing not supported:', error);
+        }
+
+        // Monitor long tasks
+        const longTaskObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach((entry) => {
+            if (entry.duration > 50) { // Tasks longer than 50ms
+              this.trackMetric('long_task', entry.duration);
+              analyticsService.trackEvent('performance_long_task', {
+                duration: entry.duration,
+                name: entry.name,
+              });
+            }
+          });
+        });
+
+        try {
+          longTaskObserver.observe({ entryTypes: ['longtask'] });
+          this.observers.push(longTaskObserver);
+        } catch (error) {
+          console.warn('Long task monitoring not supported:', error);
+        }
       }
 
-      // Monitor resource timing
-      const resourceObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          if (entry.entryType === 'resource') {
-            const resourceEntry = entry as PerformanceResourceTiming;
-            this.trackResourcePerformance(resourceEntry);
-          }
-        });
-      });
+      // Monitor memory usage
+      this.monitorMemoryUsage();
 
-      try {
-        resourceObserver.observe({ entryTypes: ['resource'] });
-        this.observers.push(resourceObserver);
-      } catch (error) {
-        console.warn('Resource timing not supported:', error);
-      }
-
-      // Monitor long tasks
-      const longTaskObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          if (entry.duration > 50) { // Tasks longer than 50ms
-            this.trackMetric('long_task', entry.duration);
-            analyticsService.trackEvent('performance_long_task', {
-              duration: entry.duration,
-              name: entry.name,
-            });
-          }
-        });
-      });
-
-      try {
-        longTaskObserver.observe({ entryTypes: ['longtask'] });
-        this.observers.push(longTaskObserver);
-      } catch (error) {
-        console.warn('Long task monitoring not supported:', error);
-      }
+      // Monitor frame rate
+      this.monitorFrameRate();
+    } catch (error) {
+      console.warn('Performance monitoring setup failed:', error);
     }
-
-    // Monitor memory usage
-    this.monitorMemoryUsage();
-
-    // Monitor frame rate
-    this.monitorFrameRate();
   }
 
   private trackResourcePerformance(entry: PerformanceResourceTiming) {
@@ -129,54 +134,62 @@ class PerformanceService {
   }
 
   private monitorMemoryUsage() {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    if ('memory' in performance) {
-      const memoryInfo = (performance as any).memory;
-      this.metrics.memoryUsage = memoryInfo.usedJSHeapSize;
-      
-      // Check for memory leaks
-      if (memoryInfo.usedJSHeapSize > memoryInfo.totalJSHeapSize * 0.9) {
-        analyticsService.trackEvent('performance_high_memory_usage', {
-          used: memoryInfo.usedJSHeapSize,
-          total: memoryInfo.totalJSHeapSize,
-        });
+    try {
+      if ('memory' in performance) {
+        const memoryInfo = (performance as any).memory;
+        this.metrics.memoryUsage = memoryInfo.usedJSHeapSize;
+        
+        // Check for memory leaks
+        if (memoryInfo.usedJSHeapSize > memoryInfo.totalJSHeapSize * 0.9) {
+          analyticsService.trackEvent('performance_high_memory_usage', {
+            used: memoryInfo.usedJSHeapSize,
+            total: memoryInfo.totalJSHeapSize,
+          });
+        }
       }
+    } catch (error) {
+      console.warn('Memory monitoring failed:', error);
     }
   }
 
   private monitorFrameRate() {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    let lastTime = performance.now();
-    let frameCount = 0;
-    
-    const measureFrameRate = (currentTime: number) => {
-      frameCount++;
+    try {
+      let lastTime = performance.now();
+      let frameCount = 0;
       
-      if (currentTime - lastTime >= 1000) {
-        const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+      const measureFrameRate = (currentTime: number) => {
+        frameCount++;
         
-        if (fps < 30) {
-          analyticsService.trackEvent('performance_low_fps', { fps });
+        if (currentTime - lastTime >= 1000) {
+          const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+          
+          if (fps < 30) {
+            analyticsService.trackEvent('performance_low_fps', { fps });
+          }
+          
+          frameCount = 0;
+          lastTime = currentTime;
         }
         
-        frameCount = 0;
-        lastTime = currentTime;
-      }
+        requestAnimationFrame(measureFrameRate);
+      };
       
       requestAnimationFrame(measureFrameRate);
-    };
-    
-    requestAnimationFrame(measureFrameRate);
+    } catch (error) {
+      console.warn('Frame rate monitoring failed:', error);
+    }
   }
 
   // Public API
   startTiming(name: string): () => void {
-    const startTime = performance.now();
+    const startTime = Date.now();
     
     return () => {
-      const duration = performance.now() - startTime;
+      const duration = Date.now() - startTime;
       this.addPerformanceEntry({
         name,
         startTime,
@@ -189,15 +202,19 @@ class PerformanceService {
   }
 
   markStart(name: string) {
-    if (Platform.OS === 'web' && 'performance' in window) {
-      performance.mark(`${name}-start`);
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'performance' in window) {
+      try {
+        performance.mark(`${name}-start`);
+      } catch (error) {
+        console.warn('Performance mark failed:', error);
+      }
     }
   }
 
   markEnd(name: string) {
-    if (Platform.OS === 'web' && 'performance' in window) {
-      performance.mark(`${name}-end`);
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'performance' in window) {
       try {
+        performance.mark(`${name}-end`);
         performance.measure(name, `${name}-start`, `${name}-end`);
         const measure = performance.getEntriesByName(name, 'measure')[0];
         if (measure) {
@@ -255,29 +272,33 @@ class PerformanceService {
 
   // Bundle size analysis
   analyzeBundleSize() {
-    if (Platform.OS !== 'web') return null;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
 
-    if (Platform.OS === 'web' && 'performance' in window) {
-      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
-      const jsResources = resources.filter(r => r.name.endsWith('.js'));
-      const cssResources = resources.filter(r => r.name.endsWith('.css'));
-      
-      const totalJSSize = jsResources.reduce((sum, r) => sum + (r.transferSize || 0), 0);
-      const totalCSSSize = cssResources.reduce((sum, r) => sum + (r.transferSize || 0), 0);
-      
-      analyticsService.trackEvent('performance_bundle_analysis', {
-        totalJSSize,
-        totalCSSSize,
-        jsFileCount: jsResources.length,
-        cssFileCount: cssResources.length,
-      });
-      
-      return {
-        totalJSSize,
-        totalCSSSize,
-        jsFileCount: jsResources.length,
-        cssFileCount: cssResources.length,
-      };
+    try {
+      if ('performance' in window) {
+        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+        const jsResources = resources.filter(r => r.name.endsWith('.js'));
+        const cssResources = resources.filter(r => r.name.endsWith('.css'));
+        
+        const totalJSSize = jsResources.reduce((sum, r) => sum + (r.transferSize || 0), 0);
+        const totalCSSSize = cssResources.reduce((sum, r) => sum + (r.transferSize || 0), 0);
+        
+        analyticsService.trackEvent('performance_bundle_analysis', {
+          totalJSSize,
+          totalCSSSize,
+          jsFileCount: jsResources.length,
+          cssFileCount: cssResources.length,
+        });
+        
+        return {
+          totalJSSize,
+          totalCSSSize,
+          jsFileCount: jsResources.length,
+          cssFileCount: cssResources.length,
+        };
+      }
+    } catch (error) {
+      console.warn('Bundle analysis failed:', error);
     }
     
     return null;
@@ -285,67 +306,73 @@ class PerformanceService {
 
   // Core Web Vitals
   measureCoreWebVitals() {
-    if (Platform.OS !== 'web') return;
-
-    // Largest Contentful Paint (LCP)
-    const lcpObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      const lastEntry = entries[entries.length - 1];
-      
-      analyticsService.trackEvent('performance_lcp', {
-        value: lastEntry.startTime,
-        rating: lastEntry.startTime <= 2500 ? 'good' : lastEntry.startTime <= 4000 ? 'needs-improvement' : 'poor',
-      });
-    });
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     try {
-      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
-      this.observers.push(lcpObserver);
-    } catch (error) {
-      console.warn('LCP monitoring not supported:', error);
-    }
-
-    // First Input Delay (FID)
-    const fidObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach((entry) => {
-        const fid = entry.processingStart - entry.startTime;
-        
-        analyticsService.trackEvent('performance_fid', {
-          value: fid,
-          rating: fid <= 100 ? 'good' : fid <= 300 ? 'needs-improvement' : 'poor',
+      if ('PerformanceObserver' in window) {
+        // Largest Contentful Paint (LCP)
+        const lcpObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const lastEntry = entries[entries.length - 1];
+          
+          analyticsService.trackEvent('performance_lcp', {
+            value: lastEntry.startTime,
+            rating: lastEntry.startTime <= 2500 ? 'good' : lastEntry.startTime <= 4000 ? 'needs-improvement' : 'poor',
+          });
         });
-      });
-    });
 
-    try {
-      fidObserver.observe({ entryTypes: ['first-input'] });
-      this.observers.push(fidObserver);
-    } catch (error) {
-      console.warn('FID monitoring not supported:', error);
-    }
-
-    // Cumulative Layout Shift (CLS)
-    let clsValue = 0;
-    const clsObserver = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach((entry: any) => {
-        if (!entry.hadRecentInput) {
-          clsValue += entry.value;
+        try {
+          lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+          this.observers.push(lcpObserver);
+        } catch (error) {
+          console.warn('LCP monitoring not supported:', error);
         }
-      });
-      
-      analyticsService.trackEvent('performance_cls', {
-        value: clsValue,
-        rating: clsValue <= 0.1 ? 'good' : clsValue <= 0.25 ? 'needs-improvement' : 'poor',
-      });
-    });
 
-    try {
-      clsObserver.observe({ entryTypes: ['layout-shift'] });
-      this.observers.push(clsObserver);
+        // First Input Delay (FID)
+        const fidObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach((entry) => {
+            const fid = entry.processingStart - entry.startTime;
+            
+            analyticsService.trackEvent('performance_fid', {
+              value: fid,
+              rating: fid <= 100 ? 'good' : fid <= 300 ? 'needs-improvement' : 'poor',
+            });
+          });
+        });
+
+        try {
+          fidObserver.observe({ entryTypes: ['first-input'] });
+          this.observers.push(fidObserver);
+        } catch (error) {
+          console.warn('FID monitoring not supported:', error);
+        }
+
+        // Cumulative Layout Shift (CLS)
+        let clsValue = 0;
+        const clsObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          entries.forEach((entry: any) => {
+            if (!entry.hadRecentInput) {
+              clsValue += entry.value;
+            }
+          });
+          
+          analyticsService.trackEvent('performance_cls', {
+            value: clsValue,
+            rating: clsValue <= 0.1 ? 'good' : clsValue <= 0.25 ? 'needs-improvement' : 'poor',
+          });
+        });
+
+        try {
+          clsObserver.observe({ entryTypes: ['layout-shift'] });
+          this.observers.push(clsObserver);
+        } catch (error) {
+          console.warn('CLS monitoring not supported:', error);
+        }
+      }
     } catch (error) {
-      console.warn('CLS monitoring not supported:', error);
+      console.warn('Core Web Vitals monitoring failed:', error);
     }
   }
 
@@ -392,7 +419,13 @@ class PerformanceService {
   }
 
   cleanup() {
-    this.observers.forEach(observer => observer.disconnect());
+    this.observers.forEach(observer => {
+      try {
+        observer.disconnect();
+      } catch (error) {
+        console.warn('Observer cleanup failed:', error);
+      }
+    });
     this.observers = [];
     this.performanceEntries = [];
   }
@@ -409,11 +442,11 @@ export function withPerformanceTracking<T extends object>(
     const renderStart = React.useRef<number>(0);
     
     React.useLayoutEffect(() => {
-      renderStart.current = performance.now();
+      renderStart.current = Date.now();
     });
     
     React.useEffect(() => {
-      const renderTime = performance.now() - renderStart.current;
+      const renderTime = Date.now() - renderStart.current;
       performanceService.trackRenderTime(componentName, renderTime);
     });
     

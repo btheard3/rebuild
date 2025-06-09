@@ -47,46 +47,55 @@ class AccessibilityService {
   }
 
   private detectWebAccessibility() {
-    if (typeof window === 'undefined' || Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    // Detect high contrast mode
-    const highContrastMedia = window.matchMedia('(prefers-contrast: high)');
-    this.features.highContrast = highContrastMedia.matches;
+    try {
+      // Detect high contrast mode
+      const highContrastMedia = window.matchMedia('(prefers-contrast: high)');
+      this.features.highContrast = highContrastMedia.matches;
 
-    // Detect reduced motion preference
-    const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
-    this.features.reducedMotion = reducedMotionMedia.matches;
+      // Detect reduced motion preference
+      const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+      this.features.reducedMotion = reducedMotionMedia.matches;
 
-    // Detect large text/zoom
-    const fontSize = window.getComputedStyle(document.documentElement).fontSize;
-    this.features.largeText = parseInt(fontSize) > 16;
+      // Detect large text/zoom
+      const fontSize = window.getComputedStyle(document.documentElement).fontSize;
+      this.features.largeText = parseInt(fontSize) > 16;
 
-    // Listen for changes
-    highContrastMedia.addEventListener('change', (e) => {
-      this.features.highContrast = e.matches;
-      this.notifyListeners();
-    });
+      // Listen for changes
+      highContrastMedia.addEventListener('change', (e) => {
+        this.features.highContrast = e.matches;
+        this.notifyListeners();
+      });
 
-    reducedMotionMedia.addEventListener('change', (e) => {
-      this.features.reducedMotion = e.matches;
-      this.notifyListeners();
-    });
+      reducedMotionMedia.addEventListener('change', (e) => {
+        this.features.reducedMotion = e.matches;
+        this.notifyListeners();
+      });
 
-    // Detect screen reader (basic detection)
-    this.features.screenReader = this.detectScreenReader();
+      // Detect screen reader (basic detection)
+      this.features.screenReader = this.detectScreenReader();
+    } catch (error) {
+      console.warn('Web accessibility detection failed:', error);
+    }
   }
 
   private detectScreenReader(): boolean {
-    if (typeof window === 'undefined' || Platform.OS !== 'web') return false;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
 
-    // Basic screen reader detection
-    const userAgent = navigator.userAgent.toLowerCase();
-    const screenReaders = ['nvda', 'jaws', 'dragon', 'zoomtext', 'fusion'];
-    
-    return screenReaders.some(sr => userAgent.includes(sr)) ||
-           // Check for screen reader specific properties
-           'speechSynthesis' in window ||
-           navigator.userAgent.includes('Accessibility');
+    try {
+      // Basic screen reader detection
+      const userAgent = navigator.userAgent.toLowerCase();
+      const screenReaders = ['nvda', 'jaws', 'dragon', 'zoomtext', 'fusion'];
+      
+      return screenReaders.some(sr => userAgent.includes(sr)) ||
+             // Check for screen reader specific properties
+             'speechSynthesis' in window ||
+             navigator.userAgent.includes('Accessibility');
+    } catch (error) {
+      console.warn('Screen reader detection failed:', error);
+      return false;
+    }
   }
 
   getFeatures(): AccessibilityFeatures {
@@ -129,21 +138,25 @@ class AccessibilityService {
   // Focus management
   announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const announcement = document.createElement('div');
-      announcement.setAttribute('aria-live', priority);
-      announcement.setAttribute('aria-atomic', 'true');
-      announcement.style.position = 'absolute';
-      announcement.style.left = '-10000px';
-      announcement.style.width = '1px';
-      announcement.style.height = '1px';
-      announcement.style.overflow = 'hidden';
-      
-      document.body.appendChild(announcement);
-      announcement.textContent = message;
-      
-      setTimeout(() => {
-        document.body.removeChild(announcement);
-      }, 1000);
+      try {
+        const announcement = document.createElement('div');
+        announcement.setAttribute('aria-live', priority);
+        announcement.setAttribute('aria-atomic', 'true');
+        announcement.style.position = 'absolute';
+        announcement.style.left = '-10000px';
+        announcement.style.width = '1px';
+        announcement.style.height = '1px';
+        announcement.style.overflow = 'hidden';
+        
+        document.body.appendChild(announcement);
+        announcement.textContent = message;
+        
+        setTimeout(() => {
+          document.body.removeChild(announcement);
+        }, 1000);
+      } catch (error) {
+        console.warn('Screen reader announcement failed:', error);
+      }
     }
     
     analyticsService.trackEvent('screen_reader_announcement', { message, priority });
@@ -153,35 +166,40 @@ class AccessibilityService {
   trapFocus(container: HTMLElement) {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
 
-    const focusableElements = container.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    
-    const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+    try {
+      const focusableElements = container.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 
-    const handleTabKey = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
+      const handleTabKey = (e: KeyboardEvent) => {
+        if (e.key === 'Tab') {
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              lastElement.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              firstElement.focus();
+              e.preventDefault();
+            }
           }
         }
-      }
-    };
+      };
 
-    container.addEventListener('keydown', handleTabKey);
-    firstElement?.focus();
+      container.addEventListener('keydown', handleTabKey);
+      firstElement?.focus();
 
-    return () => {
-      container.removeEventListener('keydown', handleTabKey);
-    };
+      return () => {
+        container.removeEventListener('keydown', handleTabKey);
+      };
+    } catch (error) {
+      console.warn('Focus trap setup failed:', error);
+      return () => {};
+    }
   }
 
   // Motion preferences
@@ -229,7 +247,13 @@ class AccessibilityService {
   }
 
   private notifyListeners() {
-    this.listeners.forEach(callback => callback(this.features));
+    this.listeners.forEach(callback => {
+      try {
+        callback(this.features);
+      } catch (error) {
+        console.warn('Accessibility listener callback failed:', error);
+      }
+    });
   }
 
   // Validation helpers
