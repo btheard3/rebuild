@@ -97,7 +97,7 @@ export default function RefreshIndicator({
           disabled={isRefreshing}
         >
           {isRefreshing ? (
-            <ActivityIndicator size="small" color="white" />
+            <ActivityIndicator size="small\" color="white" />
           ) : (
             <RefreshCw size={16} color="white" />
           )}
