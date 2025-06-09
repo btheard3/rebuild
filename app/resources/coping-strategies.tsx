@@ -5,6 +5,7 @@ import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Heart, Phone, MessageCircle, Users, BookOpen, Play } from 'lucide-react-native';
+import HomeButton from '@/components/HomeButton';
 import BoltBadge from '@/components/BoltBadge';
 
 type CopingStrategy = {
@@ -180,6 +181,7 @@ export default function CopingStrategiesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <HomeButton />
       <View style={styles.header}>
         <TouchableOpacity 
           style={[styles.backButton, { backgroundColor: colors.surface }]}
@@ -272,6 +274,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginTop: 60,
   },
   backButton: {
     width: 40,

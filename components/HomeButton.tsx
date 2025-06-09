@@ -6,14 +6,50 @@ import { Chrome as Home } from 'lucide-react-native';
 
 interface HomeButtonProps {
   style?: any;
+  showLabel?: boolean;
+  size?: 'small' | 'medium' | 'large';
 }
 
-export default function HomeButton({ style }: HomeButtonProps) {
+export default function HomeButton({ style, showLabel = true, size = 'medium' }: HomeButtonProps) {
   const { colors } = useTheme();
 
   const handlePress = () => {
-    router.push('/(tabs)');
+    try {
+      router.push('/(tabs)');
+    } catch (error) {
+      // Fallback navigation
+      console.warn('Primary navigation failed, using fallback');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
   };
+
+  const getSizeStyles = () => {
+    switch (size) {
+      case 'small':
+        return {
+          container: { minHeight: 40, minWidth: 40, paddingHorizontal: 12, paddingVertical: 8 },
+          icon: 16,
+          text: 12,
+        };
+      case 'large':
+        return {
+          container: { minHeight: 56, minWidth: 56, paddingHorizontal: 20, paddingVertical: 14 },
+          icon: 24,
+          text: 16,
+        };
+      case 'medium':
+      default:
+        return {
+          container: { minHeight: 48, minWidth: 48, paddingHorizontal: 16, paddingVertical: 12 },
+          icon: 20,
+          text: 14,
+        };
+    }
+  };
+
+  const sizeStyles = getSizeStyles();
 
   return (
     <TouchableOpacity
@@ -22,6 +58,7 @@ export default function HomeButton({ style }: HomeButtonProps) {
         {
           backgroundColor: colors.primary,
           shadowColor: colors.text,
+          ...sizeStyles.container,
         },
         style,
       ]}
@@ -29,10 +66,13 @@ export default function HomeButton({ style }: HomeButtonProps) {
       activeOpacity={0.8}
       accessibilityLabel="Go to Home"
       accessibilityRole="button"
+      accessibilityHint="Navigate to the main dashboard"
     >
-      <View style={styles.buttonContent}>
-        <Home size={20} color="white" />
-        <Text style={styles.buttonText}>Home</Text>
+      <View style={[styles.buttonContent, !showLabel && styles.iconOnly]}>
+        <Home size={sizeStyles.icon} color="white" />
+        {showLabel && (
+          <Text style={[styles.buttonText, { fontSize: sizeStyles.text }]}>Home</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -44,11 +84,7 @@ const styles = StyleSheet.create({
     top: 12,
     left: 16,
     zIndex: 1000,
-    minHeight: 48,
-    minWidth: 48,
     borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -63,9 +99,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  iconOnly: {
+    gap: 0,
+  },
   buttonText: {
     color: 'white',
-    fontSize: 14,
     fontWeight: '600',
   },
 });
