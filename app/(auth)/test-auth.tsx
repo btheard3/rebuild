@@ -5,7 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { supabase, checkSupabaseConnection } from '@/services/supabaseClient';
-import { ArrowLeft, CheckCircle, XCircle, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, CircleCheck as CheckCircle, Circle as XCircle, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 
 export default function TestAuthScreen() {
   const { colors } = useTheme();
