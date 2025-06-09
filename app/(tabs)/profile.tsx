@@ -1,13 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Image,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ChevronRight,
+  Moon,
+  Bell,
+  Lock,
+  CircleHelp as HelpCircle,
+  LogOut,
+  CreditCard,
+  Crown,
+  Contrast,
+} from 'lucide-react-native';
+
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyticsService } from '@/services/analyticsService';
-import { router } from 'expo-router';
-import { ChevronRight, Moon, Bell, Lock, CircleHelp as HelpCircle, LogOut, CreditCard, Crown, Contrast } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
 
@@ -22,24 +41,28 @@ type SettingItem = {
 };
 
 export default function ProfileScreen() {
-  const { colors, theme, toggleTheme, highContrastMode, toggleHighContrastMode } = useTheme();
+  const {
+    colors,
+    theme,
+    toggleTheme,
+    highContrastMode,
+    toggleHighContrastMode,
+  } = useTheme();
   const { user, signOut } = useAuth();
   const { data: gamificationData } = useGamification();
   const { deviceType } = useResponsive();
   const [showPaywall, setShowPaywall] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
-  const getPadding = getResponsiveValue(16, 24, 32);
-  const getMaxWidth = getResponsiveValue('100%', 600, 800);
-  
-  const padding = getPadding(deviceType);
-  const maxWidth = getMaxWidth(deviceType);
 
-  React.useEffect(() => {
+  const padding = getResponsiveValue(16, 24, 32)(deviceType);
+  const maxWidthRaw = getResponsiveValue('100%', 600, 800)(deviceType);
+  const maxWidthStyle = { maxWidth: maxWidthRaw as string | number };
+
+  useEffect(() => {
     analyticsService.trackScreen('profile');
   }, []);
-  
-  const [settings, setSettings] = useState<SettingItem[]>([
+
+  const settings: SettingItem[] = [
     {
       id: 'theme',
       title: 'Dark Mode',
@@ -88,241 +111,266 @@ export default function ProfileScreen() {
       route: '/profile/help',
       color: colors.secondary,
     },
-  ]);
+  ];
 
   const handleToggle = (id: string) => {
-    setSettings(
-      settings.map(item => {
-        if (item.id === id) {
-          if (id === 'theme') {
-            toggleTheme();
-            analyticsService.trackEvent('theme_toggled', { new_theme: theme === 'light' ? 'dark' : 'light' });
-            return { ...item, value: theme === 'light' };
-          } else if (id === 'high_contrast') {
-            toggleHighContrastMode();
-            analyticsService.trackEvent('high_contrast_toggled', { enabled: !highContrastMode });
-            return { ...item, value: !highContrastMode };
-          } else {
-            analyticsService.trackEvent('setting_toggled', { setting: id, value: !item.value });
-            return { ...item, value: !item.value };
-          }
-        }
-        return item;
-      })
-    );
+    if (id === 'theme') {
+      toggleTheme();
+      analyticsService.trackEvent('theme_toggled', {
+        new_theme: theme === 'light' ? 'dark' : 'light',
+      });
+    } else if (id === 'high_contrast') {
+      toggleHighContrastMode();
+      analyticsService.trackEvent('high_contrast_toggled', {
+        enabled: !highContrastMode,
+      });
+    } else {
+      analyticsService.trackEvent('setting_toggled', { setting: id });
+    }
   };
 
   const handleSubscriptionPress = () => {
     if (user?.isPremium) {
-      Alert.alert(
-        'Premium Subscription',
-        'You are currently subscribed to Premium. Manage your subscription in your device settings.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Premium Subscription', 'You are subscribed to Premium.');
     } else {
       setShowPaywall(true);
-      analyticsService.trackEvent('profile_subscription_pressed', { user_premium: false });
+      analyticsService.trackEvent('profile_subscription_pressed', {
+        user_premium: false,
+      });
     }
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out? You will need to sign in again to access your account.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          try {
+            await signOut();
+            analyticsService.trackEvent('user_logged_out');
+          } catch (err) {
+            console.error('Logout failed', err);
+            Alert.alert('Error', 'Could not log out. Try again.');
+          } finally {
+            setIsLoggingOut(false);
+          }
         },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoggingOut(true);
-            analyticsService.trackEvent('user_logout_initiated');
-            
-            try {
-              await signOut();
-              // Navigation will be handled by the auth context
-              router.replace('/(auth)');
-            } catch (error) {
-              console.error('Logout failed:', error);
-              Alert.alert(
-                'Logout Failed',
-                'There was an error logging out. Please try again.',
-                [{ text: 'OK' }]
-              );
-            } finally {
-              setIsLoggingOut(false);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+      },
+    ]);
   };
 
-  const renderSettingItem = (item: SettingItem) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[
-        styles.settingItem, 
-        { 
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        }
-      ]}
-      onPress={() => {
-        if (item.type === 'toggle') {
-          handleToggle(item.id);
-        } else if (item.id === 'subscription') {
-          handleSubscriptionPress();
-        } else if (item.route) {
-          analyticsService.trackUserAction('setting_link_pressed', 'profile', { setting: item.id });
-          console.log(`Navigate to ${item.route}`);
-        }
-      }}
-    >
-      <View style={styles.settingItemLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-          <item.icon size={20} color={item.color} />
-        </View>
-        <Text style={[styles.settingItemTitle, { color: colors.text }]}>{item.title}</Text>
-      </View>
-      
-      {item.type === 'toggle' ? (
-        <Switch
-          value={item.value}
-          onValueChange={() => handleToggle(item.id)}
-          trackColor={{ false: colors.disabled, true: colors.primary + '70' }}
-          thumbColor={item.value ? colors.primary : colors.border}
-        />
-      ) : (
-        <ChevronRight size={20} color={colors.textSecondary} />
-      )}
-    </TouchableOpacity>
-  );
-
-  // Updated with more inclusive profile picture
-  const userPicture = 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg';
+  const userPicture =
+    'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
-        <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Image source={{ uri: userPicture }} style={styles.profilePicture} />
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: colors.text }]}>{user?.name}</Text>
-            <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{user?.email}</Text>
-            
-            <TouchableOpacity
-              style={[
-                styles.subscriptionBadge, 
-                { backgroundColor: user?.isPremium ? colors.warning + '20' : colors.primaryLight }
-              ]}
-              onPress={handleSubscriptionPress}
-            >
-              {user?.isPremium && <Crown size={14} color={colors.warning} />}
-              <Text style={[
-                styles.subscriptionText, 
-                { 
-                  color: user?.isPremium ? colors.warning : colors.primary,
-                  marginLeft: user?.isPremium ? 4 : 0
-                }
-              ]}>
-                {user?.isPremium ? 'Premium Member' : 'Free Plan'}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView
+        contentContainerStyle={{ padding, alignSelf: 'center', width: '100%' }}
+      >
+        <View style={maxWidthStyle}>
+          <View
+            style={[
+              styles.profileCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <Image
+              source={{ uri: userPicture }}
+              style={styles.profilePicture}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.text }]}>
+                {user?.name}
               </Text>
-            </TouchableOpacity>
-
-            {/* Gamification Stats */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.primary }]}>
-                  {gamificationData.level}
+              <Text
+                style={[styles.profileEmail, { color: colors.textSecondary }]}
+              >
+                {user?.email}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.subscriptionBadge,
+                  {
+                    backgroundColor: user?.isPremium
+                      ? colors.warning + '20'
+                      : colors.primaryLight,
+                  },
+                ]}
+                onPress={handleSubscriptionPress}
+              >
+                {user?.isPremium && <Crown size={14} color={colors.warning} />}
+                <Text
+                  style={[
+                    styles.subscriptionText,
+                    {
+                      color: user?.isPremium ? colors.warning : colors.primary,
+                      marginLeft: user?.isPremium ? 4 : 0,
+                    },
+                  ]}
+                >
+                  {user?.isPremium ? 'Premium Member' : 'Free Plan'}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Level</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.success }]}>
-                  {gamificationData.points}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Points</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: colors.warning }]}>
-                  {gamificationData.streakDays}
-                </Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Streak</Text>
+              </TouchableOpacity>
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNumber, { color: colors.primary }]}>
+                    {gamificationData.level}
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Level
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNumber, { color: colors.success }]}>
+                    {gamificationData.points}
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Points
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNumber, { color: colors.warning }]}>
+                    {gamificationData.streakDays}
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: colors.textSecondary }]}
+                  >
+                    Streak
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-          
-          <TouchableOpacity
-            style={[styles.editButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              analyticsService.trackUserAction('edit_profile_pressed', 'profile');
-              console.log('Edit profile');
-            }}
+
+          <View
+            style={[
+              styles.missionCard,
+              { backgroundColor: colors.primaryLight },
+            ]}
           >
-            <Text style={styles.editButtonText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Mission Statement */}
-        <View style={[styles.missionCard, { backgroundColor: colors.primaryLight }]}>
-          <Text style={[styles.missionTitle, { color: colors.primary }]}>Our Mission</Text>
-          <Text style={[styles.missionText, { color: colors.text }]}>
-            Rebuild was born from the experience of Hurricane Katrina survivors. We believe that everyone deserves access to comprehensive disaster recovery tools, regardless of their background or circumstances. Our app provides empathetic, AI-powered support to help underserved communities navigate the complex journey of rebuilding their lives after disaster strikes.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Settings</Text>
-          <View style={styles.settingsContainer}>
-            {settings.map(renderSettingItem)}
+            <Text style={[styles.missionTitle, { color: colors.primary }]}>
+              Our Mission
+            </Text>
+            <Text style={[styles.missionText, { color: colors.text }]}>
+              Rebuild was born from the experience of Hurricane Katrina
+              survivors. We believe that everyone deserves access to
+              comprehensive disaster recovery tools, regardless of their
+              background or circumstances.
+            </Text>
           </View>
-        </View>
-        
-        <TouchableOpacity
-          style={[
-            styles.logoutButton, 
-            { 
-              borderColor: colors.error,
-              backgroundColor: isLoggingOut ? colors.error + '10' : 'transparent',
-              opacity: isLoggingOut ? 0.7 : 1,
-            }
-          ]}
-          onPress={handleLogout}
-          disabled={isLoggingOut}
-        >
-          <LogOut size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>
-            {isLoggingOut ? 'Logging Out...' : 'Log Out'}
-          </Text>
-        </TouchableOpacity>
 
-        <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-          Version 1.0.0 • Built with ❤️ for disaster survivors
-        </Text>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Account Settings
+            </Text>
+            <View style={styles.settingsContainer}>
+              {settings.map((setting) => (
+                <TouchableOpacity
+                  key={setting.id}
+                  style={[
+                    styles.settingItem,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (setting.type === 'toggle') {
+                      handleToggle(setting.id);
+                    } else if (setting.id === 'subscription') {
+                      handleSubscriptionPress();
+                    } else if (setting.route) {
+                      analyticsService.trackUserAction(
+                        'setting_link_pressed',
+                        'profile',
+                        { setting: setting.id }
+                      );
+                      console.log(`Navigate to ${setting.route}`);
+                    }
+                  }}
+                >
+                  <View style={styles.settingItemLeft}>
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        { backgroundColor: setting.color + '20' },
+                      ]}
+                    >
+                      <setting.icon size={20} color={setting.color} />
+                    </View>
+                    <Text
+                      style={[styles.settingItemTitle, { color: colors.text }]}
+                    >
+                      {setting.title}
+                    </Text>
+                  </View>
+                  {setting.type === 'toggle' ? (
+                    <Switch
+                      value={setting.value}
+                      onValueChange={() => handleToggle(setting.id)}
+                      trackColor={{
+                        false: colors.disabled,
+                        true: colors.primary + '70',
+                      }}
+                      thumbColor={
+                        setting.value ? colors.primary : colors.border
+                      }
+                    />
+                  ) : (
+                    <ChevronRight size={20} color={colors.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.logoutButton,
+              {
+                borderColor: colors.error,
+                backgroundColor: isLoggingOut
+                  ? colors.error + '10'
+                  : 'transparent',
+                opacity: isLoggingOut ? 0.7 : 1,
+              },
+            ]}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut size={20} color={colors.error} />
+            <Text style={[styles.logoutText, { color: colors.error }]}>
+              {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
+            Version 1.0.0 • Built with ❤️ for disaster survivors
+          </Text>
+        </View>
       </ScrollView>
 
-      <PaywallScreen 
-        visible={showPaywall} 
-        onClose={() => setShowPaywall(false)} 
+      <PaywallScreen
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
       />
-      
       <BoltBadge />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 80,
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: 80 },
   profileCard: {
     flexDirection: 'row',
     padding: 16,
@@ -376,15 +424,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     marginTop: 2,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  editButtonText: {
-    color: 'white',
-    fontWeight: '600',
   },
   missionCard: {
     borderRadius: 12,
