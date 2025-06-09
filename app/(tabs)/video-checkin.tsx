@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/context/GamificationContext';
@@ -8,9 +8,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { tavusService } from '@/services/tavusService';
 import { analyticsService } from '@/services/analyticsService';
 import { Video, ResizeMode } from 'expo-av';
-import { Play, Pause, RotateCcw, Crown, Lock } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
+
+interface VideoCheckIn {
+  id: string;
+  videoId: string;
+  videoUrl?: string;
+  status: 'generating' | 'completed' | 'failed';
+  createdAt: Date;
+  script: string;
+  mood?: string;
+  progress?: string[];
+}
 
 export default function VideoCheckinScreen() {
   const { colors } = useTheme();
@@ -18,10 +29,12 @@ export default function VideoCheckinScreen() {
   const { data: gamificationData, addPoints } = useGamification();
   const { deviceType } = useResponsive();
   
-  const [videoData, setVideoData] = useState<{ videoId: string; videoUrl?: string; status: string } | null>(null);
+  const [videoCheckIns, setVideoCheckIns] = useState<VideoCheckIn[]>([]);
+  const [currentVideo, setCurrentVideo] = useState<VideoCheckIn | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [videoStatus, setVideoStatus] = useState<any>({});
+  const [selectedMood, setSelectedMood] = useState<string>('');
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -29,25 +42,38 @@ export default function VideoCheckinScreen() {
   const padding = getPadding(deviceType);
   const maxWidth = getMaxWidth(deviceType);
 
+  const moodOptions = [
+    { id: 'hopeful', label: 'Hopeful', emoji: '🌟', color: colors.success },
+    { id: 'overwhelmed', label: 'Overwhelmed', emoji: '😰', color: colors.warning },
+    { id: 'grateful', label: 'Grateful', emoji: '🙏', color: colors.primary },
+    { id: 'anxious', label: 'Anxious', emoji: '😟', color: colors.error },
+    { id: 'determined', label: 'Determined', emoji: '💪', color: colors.accent },
+  ];
+
   useEffect(() => {
     analyticsService.trackScreen('video_checkin');
-    
-    // Check if user has existing video
-    loadExistingVideo();
+    loadVideoHistory();
   }, []);
 
-  const loadExistingVideo = async () => {
-    // In a real app, you'd load from storage or API
-    // For now, we'll just check if there's a mock video
-    const mockVideoId = 'mock_video_' + user?.id;
-    const status = await tavusService.getVideoStatus(mockVideoId);
+  const loadVideoHistory = async () => {
+    // In a real app, this would load from storage or API
+    // For now, we'll check if there's a recent video
+    const mockHistory: VideoCheckIn[] = [
+      {
+        id: '1',
+        videoId: 'mock_video_1',
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        status: 'completed',
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+        script: 'Welcome back! I can see you\'ve been making great progress...',
+        mood: 'hopeful',
+        progress: ['Completed recovery wizard', 'Uploaded documents']
+      }
+    ];
     
-    if (status && status.status === 'completed') {
-      setVideoData({
-        videoId: mockVideoId,
-        videoUrl: status.videoUrl,
-        status: status.status
-      });
+    setVideoCheckIns(mockHistory);
+    if (mockHistory.length > 0) {
+      setCurrentVideo(mockHistory[0]);
     }
   };
 
@@ -58,38 +84,66 @@ export default function VideoCheckinScreen() {
       return;
     }
 
+    if (!selectedMood) {
+      Alert.alert('Select Your Mood', 'Please select how you\'re feeling today to personalize your video message.');
+      return;
+    }
+
     setIsGenerating(true);
-    analyticsService.trackEvent('video_checkin_generation_started');
+    analyticsService.trackEvent('video_checkin_generation_started', { mood: selectedMood });
 
     try {
-      // Generate personalized script based on user data
+      // Generate personalized script based on user data and mood
+      const recentProgress = [
+        'Completed your recovery assessment',
+        'Uploaded important documents',
+        'Connected with local resources',
+        `Maintained a ${gamificationData.streakDays}-day streak`
+      ].filter(Boolean);
+
       const script = tavusService.generatePersonalizedScript({
         name: user.name?.split(' ')[0],
         disasterType: 'hurricane', // This would come from user's recovery wizard data
-        daysSinceDisaster: 5, // This would be calculated from actual disaster date
-        immediateNeeds: ['shelter', 'food'], // From user's needs assessment
-        recentProgress: ['Completed recovery wizard', 'Uploaded insurance documents']
+        daysSinceDisaster: 7, // This would be calculated from actual disaster date
+        immediateNeeds: ['shelter', 'insurance'], // From user's needs assessment
+        recentProgress,
+        mood: selectedMood,
+        currentLevel: gamificationData.level,
+        totalPoints: gamificationData.points
       });
 
       const result = await tavusService.generateVideo(script, user.id);
       
       if (result) {
-        setVideoData(result);
+        const newVideoCheckIn: VideoCheckIn = {
+          id: Date.now().toString(),
+          videoId: result.videoId,
+          status: result.status as any,
+          createdAt: new Date(),
+          script,
+          mood: selectedMood,
+          progress: recentProgress
+        };
+
+        setVideoCheckIns(prev => [newVideoCheckIn, ...prev]);
+        setCurrentVideo(newVideoCheckIn);
         
         // Poll for completion
-        pollVideoStatus(result.videoId);
+        pollVideoStatus(result.videoId, newVideoCheckIn.id);
         
         // Award points for using AI video feature
         addPoints(25, 'Generated AI video check-in');
         
         analyticsService.trackEvent('video_checkin_generation_completed', {
-          videoId: result.videoId
+          videoId: result.videoId,
+          mood: selectedMood
         });
       }
     } catch (error) {
       console.error('Failed to generate video:', error);
       analyticsService.trackError('video_checkin_generation_failed', 'VideoCheckinScreen', {
-        error: error.message
+        error: error.message,
+        mood: selectedMood
       });
       
       Alert.alert(
@@ -102,7 +156,7 @@ export default function VideoCheckinScreen() {
     }
   };
 
-  const pollVideoStatus = async (videoId: string) => {
+  const pollVideoStatus = async (videoId: string, checkInId: string) => {
     const maxAttempts = 30; // 5 minutes with 10-second intervals
     let attempts = 0;
 
@@ -111,7 +165,15 @@ export default function VideoCheckinScreen() {
       const status = await tavusService.getVideoStatus(videoId);
       
       if (status) {
-        setVideoData(prev => prev ? { ...prev, ...status } : null);
+        setVideoCheckIns(prev => prev.map(checkIn => 
+          checkIn.id === checkInId 
+            ? { ...checkIn, status: status.status as any, videoUrl: status.videoUrl }
+            : checkIn
+        ));
+
+        if (currentVideo?.id === checkInId) {
+          setCurrentVideo(prev => prev ? { ...prev, status: status.status as any, videoUrl: status.videoUrl } : null);
+        }
         
         if (status.status === 'completed' && status.videoUrl) {
           analyticsService.trackEvent('video_checkin_ready', { videoId });
@@ -127,7 +189,7 @@ export default function VideoCheckinScreen() {
         }
       }
 
-      if (attempts < maxAttempts) {
+      if (attempts < maxAttempts && status?.status === 'generating') {
         setTimeout(poll, 10000); // Poll every 10 seconds
       }
     };
@@ -147,40 +209,82 @@ export default function VideoCheckinScreen() {
 
   const handleRegenerate = () => {
     Alert.alert(
-      'Regenerate Video',
-      'This will create a new personalized video check-in. Continue?',
+      'Generate New Video',
+      'This will create a new personalized video check-in based on your current mood and progress. Continue?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Regenerate', onPress: generatePersonalizedVideo }
+        { text: 'Generate', onPress: () => {
+          setSelectedMood('');
+          setCurrentVideo(null);
+        }}
       ]
     );
   };
 
+  const selectVideoCheckIn = (checkIn: VideoCheckIn) => {
+    setCurrentVideo(checkIn);
+    analyticsService.trackEvent('video_checkin_selected', { 
+      videoId: checkIn.videoId,
+      age: Date.now() - checkIn.createdAt.getTime()
+    });
+  };
+
+  const renderMoodSelector = () => (
+    <View style={styles.moodSection}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>How are you feeling today?</Text>
+      <View style={styles.moodOptions}>
+        {moodOptions.map((mood) => (
+          <TouchableOpacity
+            key={mood.id}
+            style={[
+              styles.moodOption,
+              {
+                backgroundColor: selectedMood === mood.id ? mood.color + '20' : colors.surface,
+                borderColor: selectedMood === mood.id ? mood.color : colors.border,
+              }
+            ]}
+            onPress={() => setSelectedMood(mood.id)}
+          >
+            <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+            <Text style={[
+              styles.moodLabel,
+              { color: selectedMood === mood.id ? mood.color : colors.text }
+            ]}>
+              {mood.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
   const renderVideoPlayer = () => {
-    if (!videoData?.videoUrl) return null;
+    if (!currentVideo?.videoUrl) return null;
 
     return (
       <View style={[styles.videoContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Video
           style={styles.video}
-          source={{ uri: videoData.videoUrl }}
+          source={{ uri: currentVideo.videoUrl }}
           useNativeControls
           resizeMode={ResizeMode.CONTAIN}
           isLooping={false}
           onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
         />
         
-        <View style={styles.videoControls}>
-          <TouchableOpacity
-            style={[styles.playButton, { backgroundColor: colors.primary }]}
-            onPress={handlePlayPause}
-          >
-            {videoStatus.isPlaying ? (
-              <Pause size={24} color="white" />
-            ) : (
-              <Play size={24} color="white" />
+        <View style={styles.videoOverlay}>
+          <View style={styles.videoInfo}>
+            <Text style={[styles.videoDate, { color: colors.text }]}>
+              {currentVideo.createdAt.toLocaleDateString()}
+            </Text>
+            {currentVideo.mood && (
+              <View style={[styles.moodBadge, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[styles.moodBadgeText, { color: colors.primary }]}>
+                  {moodOptions.find(m => m.id === currentVideo.mood)?.emoji} {currentVideo.mood}
+                </Text>
+              </View>
             )}
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -188,28 +292,75 @@ export default function VideoCheckinScreen() {
 
   const renderGeneratingState = () => (
     <View style={[styles.generatingContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.sparkleIcon, { backgroundColor: colors.primary + '20' }]}>
+        <Sparkles size={32} color={colors.primary} />
+      </View>
       <Text style={[styles.generatingTitle, { color: colors.text }]}>
         Creating Your Personal Check-in
       </Text>
       <Text style={[styles.generatingText, { color: colors.textSecondary }]}>
-        Our AI is crafting a personalized video message just for you. This usually takes 2-3 minutes.
+        Our AI is crafting a personalized video message based on your mood and recovery progress. This usually takes 2-3 minutes.
       </Text>
       
-      {videoData && (
+      {currentVideo && (
         <View style={[styles.statusContainer, { backgroundColor: colors.primaryLight }]}>
           <Text style={[styles.statusText, { color: colors.primary }]}>
-            Status: {videoData.status}
+            Status: {currentVideo.status}
           </Text>
         </View>
       )}
     </View>
   );
 
+  const renderVideoHistory = () => {
+    if (videoCheckIns.length === 0) return null;
+
+    return (
+      <View style={styles.historySection}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Previous Check-ins</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.historyScroll}>
+          {videoCheckIns.map((checkIn) => (
+            <TouchableOpacity
+              key={checkIn.id}
+              style={[
+                styles.historyItem,
+                {
+                  backgroundColor: currentVideo?.id === checkIn.id ? colors.primaryLight : colors.surface,
+                  borderColor: currentVideo?.id === checkIn.id ? colors.primary : colors.border,
+                }
+              ]}
+              onPress={() => selectVideoCheckIn(checkIn)}
+            >
+              <View style={styles.historyItemHeader}>
+                <Calendar size={16} color={colors.textSecondary} />
+                <Text style={[styles.historyDate, { color: colors.textSecondary }]}>
+                  {checkIn.createdAt.toLocaleDateString()}
+                </Text>
+              </View>
+              {checkIn.mood && (
+                <Text style={[styles.historyMood, { color: colors.text }]}>
+                  {moodOptions.find(m => m.id === checkIn.mood)?.emoji} {checkIn.mood}
+                </Text>
+              )}
+              <View style={[
+                styles.statusIndicator,
+                { backgroundColor: checkIn.status === 'completed' ? colors.success : colors.warning }
+              ]}>
+                <Text style={styles.statusIndicatorText}>
+                  {checkIn.status === 'completed' ? 'Ready' : 'Processing'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderEmptyState = () => (
     <View style={[styles.emptyContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-        <Crown size={48} color={colors.primary} />
+        <MessageCircle size={48} color={colors.primary} />
       </View>
       
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -217,38 +368,31 @@ export default function VideoCheckinScreen() {
       </Text>
       
       <Text style={[styles.emptyDescription, { color: colors.textSecondary }]}>
-        Get personalized video messages from your AI companion. These check-ins are tailored to your recovery journey and provide emotional support when you need it most.
+        Get personalized video messages from your AI companion. These check-ins are tailored to your recovery journey, current mood, and provide emotional support when you need it most.
       </Text>
+
+      <View style={[styles.featuresContainer, { backgroundColor: colors.primaryLight }]}>
+        <Text style={[styles.featuresTitle, { color: colors.primary }]}>What makes it special:</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Personalized based on your recovery progress</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Adapts to your current emotional state</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Celebrates your achievements and milestones</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Provides encouragement during difficult times</Text>
+      </View>
 
       {!user?.isPremium && (
         <View style={[styles.premiumNotice, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
-          <Lock size={20} color={colors.warning} />
+          <Crown size={20} color={colors.warning} />
           <Text style={[styles.premiumText, { color: colors.warning }]}>
             Premium Feature
           </Text>
         </View>
       )}
-
-      <TouchableOpacity
-        style={[
-          styles.generateButton,
-          { 
-            backgroundColor: user?.isPremium ? colors.primary : colors.disabled,
-          }
-        ]}
-        onPress={generatePersonalizedVideo}
-        disabled={isGenerating}
-      >
-        <Text style={[styles.generateButtonText, { color: 'white' }]}>
-          {user?.isPremium ? 'Generate My Check-in' : 'Upgrade to Premium'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.content, { paddingHorizontal: padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
+      <ScrollView style={[styles.content, { paddingHorizontal: padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>AI Video Check-in</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
@@ -258,7 +402,7 @@ export default function VideoCheckinScreen() {
 
         {isGenerating ? (
           renderGeneratingState()
-        ) : videoData?.videoUrl ? (
+        ) : currentVideo?.videoUrl ? (
           <View style={styles.videoSection}>
             {renderVideoPlayer()}
             
@@ -279,14 +423,49 @@ export default function VideoCheckinScreen() {
                 Your Personalized Message
               </Text>
               <Text style={[styles.infoText, { color: colors.text }]}>
-                This video was created specifically for you based on your recovery progress, current needs, and personal journey. Take a moment to listen to this supportive message.
+                This video was created specifically for you based on your recovery progress, current mood ({currentVideo.mood}), and personal journey. Take a moment to listen to this supportive message.
               </Text>
             </View>
+
+            {renderVideoHistory()}
           </View>
         ) : (
-          renderEmptyState()
+          <View>
+            {renderEmptyState()}
+            {user?.isPremium && (
+              <View>
+                {renderMoodSelector()}
+                <TouchableOpacity
+                  style={[
+                    styles.generateButton,
+                    { 
+                      backgroundColor: selectedMood ? colors.primary : colors.disabled,
+                    }
+                  ]}
+                  onPress={generatePersonalizedVideo}
+                  disabled={isGenerating || !selectedMood}
+                >
+                  <Sparkles size={20} color="white" />
+                  <Text style={[styles.generateButtonText, { color: 'white' }]}>
+                    Generate My Check-in
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {!user?.isPremium && (
+              <TouchableOpacity
+                style={[styles.generateButton, { backgroundColor: colors.warning }]}
+                onPress={() => setShowPaywall(true)}
+              >
+                <Crown size={20} color="white" />
+                <Text style={[styles.generateButtonText, { color: 'white' }]}>
+                  Upgrade to Premium
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
-      </View>
+      </ScrollView>
 
       <PaywallScreen 
         visible={showPaywall} 
@@ -305,6 +484,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 12,
+    paddingBottom: 100,
   },
   header: {
     marginBottom: 24,
@@ -316,6 +496,36 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
+  },
+  moodSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  moodOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  moodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 2,
+    minWidth: 120,
+  },
+  moodEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  moodLabel: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   videoSection: {
     flex: 1,
@@ -331,17 +541,34 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
   },
-  videoControls: {
+  videoOverlay: {
     position: 'absolute',
-    bottom: 16,
+    top: 16,
+    left: 16,
     right: 16,
   },
-  playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
+  videoInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  videoDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: 'white',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  moodBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  moodBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   videoActions: {
     flexDirection: 'row',
@@ -368,12 +595,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 32,
     borderWidth: 1,
+    marginBottom: 24,
+  },
+  sparkleIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   generatingTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   generatingText: {
     fontSize: 16,
@@ -391,12 +627,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16,
     padding: 32,
     borderWidth: 1,
+    marginBottom: 24,
   },
   iconContainer: {
     width: 80,
@@ -410,12 +646,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 12,
+    textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
+  },
+  featuresContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    width: '100%',
+  },
+  featuresTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  featureItem: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
   },
   premiumNotice: {
     flexDirection: 'row',
@@ -432,20 +685,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   generateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderRadius: 12,
-    minWidth: 200,
-    alignItems: 'center',
+    marginBottom: 20,
   },
   generateButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 8,
   },
   infoCard: {
     borderRadius: 12,
     padding: 16,
-    marginTop: 16,
+    marginBottom: 20,
   },
   infoTitle: {
     fontSize: 16,
@@ -455,5 +711,43 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  historySection: {
+    marginTop: 24,
+  },
+  historyScroll: {
+    marginTop: 12,
+  },
+  historyItem: {
+    width: 160,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 12,
+  },
+  historyItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  historyDate: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  historyMood: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  statusIndicator: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  statusIndicatorText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
