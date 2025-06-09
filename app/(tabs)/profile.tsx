@@ -6,6 +6,7 @@ import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyticsService } from '@/services/analyticsService';
+import { router } from 'expo-router';
 import { ChevronRight, Moon, Bell, Lock, CircleHelp as HelpCircle, LogOut, CreditCard, Crown, Contrast } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const { data: gamificationData } = useGamification();
   const { deviceType } = useResponsive();
   const [showPaywall, setShowPaywall] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -126,7 +128,7 @@ export default function ProfileScreen() {
   const handleLogout = () => {
     Alert.alert(
       'Log Out',
-      'Are you sure you want to log out?',
+      'Are you sure you want to log out? You will need to sign in again to access your account.',
       [
         {
           text: 'Cancel',
@@ -135,9 +137,24 @@ export default function ProfileScreen() {
         {
           text: 'Log Out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            setIsLoggingOut(true);
             analyticsService.trackEvent('user_logout_initiated');
-            signOut();
+            
+            try {
+              await signOut();
+              // Navigation will be handled by the auth context
+              router.replace('/(auth)');
+            } catch (error) {
+              console.error('Logout failed:', error);
+              Alert.alert(
+                'Logout Failed',
+                'There was an error logging out. Please try again.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsLoggingOut(false);
+            }
           },
         },
       ],
@@ -267,11 +284,21 @@ export default function ProfileScreen() {
         </View>
         
         <TouchableOpacity
-          style={[styles.logoutButton, { borderColor: colors.error }]}
+          style={[
+            styles.logoutButton, 
+            { 
+              borderColor: colors.error,
+              backgroundColor: isLoggingOut ? colors.error + '10' : 'transparent',
+              opacity: isLoggingOut ? 0.7 : 1,
+            }
+          ]}
           onPress={handleLogout}
+          disabled={isLoggingOut}
         >
           <LogOut size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>Log Out</Text>
+          <Text style={[styles.logoutText, { color: colors.error }]}>
+            {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+          </Text>
         </TouchableOpacity>
 
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>
@@ -413,13 +440,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
     marginBottom: 24,
+    gap: 8,
   },
   logoutText: {
-    marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
   },
