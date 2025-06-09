@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { RefreshCw, Home, AlertTriangle } from 'lucide-react-native';
+import { RefreshCw, Chrome as Home, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 
 interface ErrorBoundaryState {
   hasError: boolean;
