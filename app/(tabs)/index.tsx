@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { useTheme } from '@context/ThemeContext';
-import { useAuth } from '@context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
-import Card from '@components/Card';
-import { supabase } from '@services/supabase';
-import { RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+import Card from '@/components/Card';
 import { Heart, BookOpen, MapPin, Video, Trophy, Bell } from 'lucide-react-native';
-
-type AlertPayload = {
-  id: string;
-  message: string;
-  created_at: string;
-};
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const [alerts, setAlerts] = useState<AlertPayload[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const quickActions = [
     {
@@ -70,35 +62,41 @@ export default function HomeScreen() {
     },
   ];
 
-  // 🔔 Supabase real-time alerts subscription
+  // Initialize Supabase connection safely
   useEffect(() => {
-    const channel = supabase
-      .channel('alerts')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alerts',
-        },
-        (payload: RealtimePostgresInsertPayload<any>) => {
-          const newAlert = payload.new as AlertPayload;
+    const initializeSupabase = async () => {
+      try {
+        // Dynamically import supabase to avoid initialization errors
+        const { supabase } = await import('@/services/supabase');
+        
+        const channel = supabase
+          .channel('alerts')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'alerts',
+            },
+            (payload: any) => {
+              const newAlert = payload.new;
+              if (newAlert && newAlert.id && newAlert.message) {
+                setAlerts((prev) => [...prev, newAlert]);
+              }
+            }
+          )
+          .subscribe();
 
-          if (
-            newAlert &&
-            typeof newAlert.id === 'string' &&
-            typeof newAlert.message === 'string' &&
-            typeof newAlert.created_at === 'string'
-          ) {
-            setAlerts((prev) => [...prev, newAlert]);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } catch (error) {
+        console.warn('Supabase initialization failed:', error);
+        // Continue without real-time features
+      }
     };
+
+    initializeSupabase();
   }, []);
 
   return (

@@ -6,13 +6,12 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { useTheme } from '@context/ThemeContext';
-import type { LucideIcon } from 'lucide-react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 export type CardProps = {
   title: string;
   description: string;
-  icon?: LucideIcon;
+  icon?: React.ComponentType<{ size: number; color: string }>;
   color: string;
   onPress: () => void;
 };
