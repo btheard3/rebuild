@@ -41,6 +41,8 @@ class PerformanceService {
   }
 
   private setupWebPerformanceMonitoring() {
+    if (Platform.OS !== 'web') return;
+
     // Monitor navigation timing
     if ('PerformanceObserver' in window) {
       const navigationObserver = new PerformanceObserver((list) => {
@@ -127,6 +129,8 @@ class PerformanceService {
   }
 
   private monitorMemoryUsage() {
+    if (Platform.OS !== 'web') return;
+
     if ('memory' in performance) {
       const memoryInfo = (performance as any).memory;
       this.metrics.memoryUsage = memoryInfo.usedJSHeapSize;
@@ -142,6 +146,8 @@ class PerformanceService {
   }
 
   private monitorFrameRate() {
+    if (Platform.OS !== 'web') return;
+
     let lastTime = performance.now();
     let frameCount = 0;
     
@@ -249,6 +255,8 @@ class PerformanceService {
 
   // Bundle size analysis
   analyzeBundleSize() {
+    if (Platform.OS !== 'web') return null;
+
     if (Platform.OS === 'web' && 'performance' in window) {
       const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
       const jsResources = resources.filter(r => r.name.endsWith('.js'));

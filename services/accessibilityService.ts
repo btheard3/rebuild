@@ -47,7 +47,7 @@ class AccessibilityService {
   }
 
   private detectWebAccessibility() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || Platform.OS !== 'web') return;
 
     // Detect high contrast mode
     const highContrastMedia = window.matchMedia('(prefers-contrast: high)');
@@ -77,7 +77,7 @@ class AccessibilityService {
   }
 
   private detectScreenReader(): boolean {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined' || Platform.OS !== 'web') return false;
 
     // Basic screen reader detection
     const userAgent = navigator.userAgent.toLowerCase();
@@ -151,7 +151,7 @@ class AccessibilityService {
 
   // Keyboard navigation helpers
   trapFocus(container: HTMLElement) {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
 
     const focusableElements = container.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'

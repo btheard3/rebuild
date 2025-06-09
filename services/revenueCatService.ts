@@ -1,5 +1,21 @@
-import Purchases, { PurchasesOffering, CustomerInfo } from 'react-native-purchases';
 import { Platform } from 'react-native';
+
+// Import types conditionally to avoid errors when the package isn't available
+let Purchases: any = null;
+let PurchasesOffering: any = null;
+let CustomerInfo: any = null;
+
+// Safely import RevenueCat only on native platforms
+if (Platform.OS !== 'web') {
+  try {
+    const RevenueCatModule = require('react-native-purchases');
+    Purchases = RevenueCatModule.default || RevenueCatModule.Purchases;
+    PurchasesOffering = RevenueCatModule.PurchasesOffering;
+    CustomerInfo = RevenueCatModule.CustomerInfo;
+  } catch (error) {
+    console.warn('RevenueCat not available:', error);
+  }
+}
 
 class RevenueCatService {
   private initialized = false;
@@ -9,10 +25,16 @@ class RevenueCatService {
       return;
     }
 
+    // Check if Purchases is available
+    if (!Purchases) {
+      console.warn('RevenueCat Purchases module not available');
+      return;
+    }
+
     try {
       const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY;
-      if (!apiKey) {
-        console.warn('RevenueCat API key not found');
+      if (!apiKey || apiKey.includes('placeholder')) {
+        console.warn('RevenueCat API key not configured');
         return;
       }
 
@@ -27,6 +49,11 @@ class RevenueCatService {
   private async ensureInitialized(): Promise<boolean> {
     if (Platform.OS === 'web') {
       return true;
+    }
+
+    if (!Purchases) {
+      console.warn('RevenueCat Purchases module not available');
+      return false;
     }
 
     if (!this.initialized) {
@@ -47,7 +74,7 @@ class RevenueCatService {
     return this.initialized;
   }
 
-  async getOfferings(): Promise<PurchasesOffering[]> {
+  async getOfferings(): Promise<any[]> {
     if (Platform.OS === 'web') {
       // Mock offerings for web
       return [
@@ -114,8 +141,8 @@ class RevenueCatService {
     try {
       const offerings = await Purchases.getOfferings();
       const targetPackage = Object.values(offerings.all)
-        .flatMap(offering => offering.availablePackages)
-        .find(pkg => pkg.identifier === packageIdentifier);
+        .flatMap((offering: any) => offering.availablePackages)
+        .find((pkg: any) => pkg.identifier === packageIdentifier);
 
       if (!targetPackage) {
         throw new Error('Package not found');
@@ -149,7 +176,7 @@ class RevenueCatService {
     }
   }
 
-  async getCustomerInfo(): Promise<CustomerInfo | null> {
+  async getCustomerInfo(): Promise<any | null> {
     if (Platform.OS === 'web') {
       return null;
     }
@@ -168,7 +195,7 @@ class RevenueCatService {
     }
   }
 
-  async onCustomerInfoUpdated(callback: (customerInfo: CustomerInfo) => void) {
+  async onCustomerInfoUpdated(callback: (customerInfo: any) => void) {
     if (Platform.OS === 'web') {
       return;
     }
