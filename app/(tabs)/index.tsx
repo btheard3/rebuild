@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import Card from '@components/Card';
 import { supabase } from '@services/supabase';
 import { RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+import { Heart, BookOpen, MapPin, Video, Trophy, Bell } from 'lucide-react-native';
 
 type AlertPayload = {
   id: string;
@@ -21,19 +22,51 @@ export default function HomeScreen() {
   const quickActions = [
     {
       id: '1',
-      title: 'Crisis Wizard',
-      description: 'Start recovery planning',
-      icon: null, // Replace with a valid LucideIcon if needed
-      color: colors.error,
+      title: 'Recovery Wizard',
+      description: 'Start your personalized recovery plan',
+      icon: MapPin,
+      color: colors.primary,
       onPress: () => router.push('/recovery-wizard'),
     },
     {
       id: '2',
-      title: 'Wellness',
-      description: 'Track your mental state',
-      icon: null,
-      color: colors.primary,
-      onPress: () => router.push('/wellness'),
+      title: 'Mental Wellness',
+      description: 'Access mindfulness and coping tools',
+      icon: Heart,
+      color: colors.success,
+      onPress: () => router.push('/(tabs)/wellness'),
+    },
+    {
+      id: '3',
+      title: 'AI Video Check-in',
+      description: 'Get personalized support messages',
+      icon: Video,
+      color: colors.accent,
+      onPress: () => router.push('/(tabs)/video-checkin'),
+    },
+    {
+      id: '4',
+      title: 'Recovery Resources',
+      description: 'Find local aid and support services',
+      icon: BookOpen,
+      color: colors.secondary,
+      onPress: () => router.push('/(tabs)/cases'),
+    },
+    {
+      id: '5',
+      title: 'Progress Tracking',
+      description: 'View your recovery achievements',
+      icon: Trophy,
+      color: colors.warning,
+      onPress: () => router.push('/(tabs)/achievements'),
+    },
+    {
+      id: '6',
+      title: 'Emergency Alerts',
+      description: 'Stay informed about local updates',
+      icon: Bell,
+      color: colors.error,
+      onPress: () => router.push('/(tabs)/alerts'),
     },
   ];
 
@@ -84,12 +117,48 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Example: Display real-time alerts */}
+        {/* Real-time alerts display */}
         {alerts.map((alert) => (
-          <Text key={alert.id} style={{ color: colors.primary }}>
-            🔔 {alert.message}
-          </Text>
+          <View key={alert.id} style={[styles.alertBanner, { backgroundColor: colors.primaryLight }]}>
+            <Bell size={16} color={colors.primary} />
+            <Text style={[styles.alertText, { color: colors.primary }]}>
+              {alert.message}
+            </Text>
+          </View>
         ))}
+
+        {/* Quick Actions Section */}
+        <View style={styles.quickActionsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Quick Actions
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+            Access your most important recovery tools
+          </Text>
+          
+          <View style={styles.quickActionsGrid}>
+            {quickActions.map((action) => (
+              <Card
+                key={action.id}
+                title={action.title}
+                description={action.description}
+                icon={action.icon}
+                color={action.color}
+                onPress={action.onPress}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Welcome Message for New Users */}
+        <View style={[styles.welcomeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+            Welcome to Rebuild
+          </Text>
+          <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
+            Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -105,13 +174,57 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+    marginTop: 12,
   },
   greeting: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
   },
   subtitle: {
     fontSize: 16,
     marginTop: 4,
+  },
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  alertText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  quickActionsSection: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  quickActionsGrid: {
+    gap: 12,
+  },
+  welcomeCard: {
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  welcomeText: {
+    fontSize: 16,
+    lineHeight: 24,
   },
 });
