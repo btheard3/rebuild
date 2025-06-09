@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { analyticsService } from '@/services/analyticsService';
-import { AlertTriangle, Info, CheckCircle, Clock, MapPin, Bell } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, Info, CircleCheck as CheckCircle, Clock, MapPin, Bell } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 interface Alert {
