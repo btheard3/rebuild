@@ -7,7 +7,7 @@ import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { tavusService } from '@/services/tavusService';
 import { analyticsService } from '@/services/analyticsService';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { Video, ResizeMode } from 'expo-av';
 import { Play, Pause, RotateCcw, Crown, Lock } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
@@ -21,18 +21,13 @@ export default function VideoCheckinScreen() {
   const [videoData, setVideoData] = useState<{ videoId: string; videoUrl?: string; status: string } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [videoStatus, setVideoStatus] = useState<any>({});
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
   
   const padding = getPadding(deviceType);
   const maxWidth = getMaxWidth(deviceType);
-
-  // Create video player
-  const player = useVideoPlayer(videoData?.videoUrl || '', (player) => {
-    player.loop = false;
-    player.muted = false;
-  });
 
   useEffect(() => {
     analyticsService.trackScreen('video_checkin');
@@ -141,11 +136,11 @@ export default function VideoCheckinScreen() {
   };
 
   const handlePlayPause = () => {
-    if (player.playing) {
-      player.pause();
+    if (videoStatus.isPlaying) {
+      setVideoStatus(prev => ({ ...prev, isPlaying: false }));
       analyticsService.trackEvent('video_checkin_paused');
     } else {
-      player.play();
+      setVideoStatus(prev => ({ ...prev, isPlaying: true }));
       analyticsService.trackEvent('video_checkin_played');
     }
   };
@@ -166,11 +161,13 @@ export default function VideoCheckinScreen() {
 
     return (
       <View style={[styles.videoContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <VideoView
+        <Video
           style={styles.video}
-          player={player}
-          allowsFullscreen
-          allowsPictureInPicture
+          source={{ uri: videoData.videoUrl }}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping={false}
+          onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
         />
         
         <View style={styles.videoControls}>
@@ -178,7 +175,7 @@ export default function VideoCheckinScreen() {
             style={[styles.playButton, { backgroundColor: colors.primary }]}
             onPress={handlePlayPause}
           >
-            {player.playing ? (
+            {videoStatus.isPlaying ? (
               <Pause size={24} color="white" />
             ) : (
               <Play size={24} color="white" />
