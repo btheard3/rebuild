@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
+import { useResponsive } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import HomeButton from '@/components/HomeButton';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { Search, Filter, Plus, MapPin, Clock, Phone, ExternalLink, Star, Heart } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
@@ -30,18 +33,10 @@ type Resource = {
 
 export default function CasesScreen() {
   const { colors } = useTheme();
-  const { deviceType } = useResponsive();
+  const { deviceType, padding } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('all');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-
-  const getPadding = getResponsiveValue(16, 24, 32);
-  const getMaxWidth = getResponsiveValue('100%', 800, 1000);
-  const getCardWidth = getResponsiveValue('100%', '48%', '32%');
-  
-  const padding = getPadding(deviceType);
-  const maxWidth = getMaxWidth(deviceType);
-  const cardWidth = getCardWidth(deviceType);
 
   const categories = [
     { id: 'all', label: 'All Resources', icon: '🏠' },
@@ -55,7 +50,6 @@ export default function CasesScreen() {
     { id: 'utilities', label: 'Utilities', icon: '⚡' },
   ];
 
-  // Comprehensive resource data with inclusive imagery
   const resources: Resource[] = [
     {
       id: '1',
@@ -283,6 +277,8 @@ export default function CasesScreen() {
           { 
             backgroundColor: isSelected ? colors.primary : colors.surface,
             borderColor: isSelected ? colors.primary : colors.border,
+            paddingHorizontal: deviceType === 'mobile' ? 12 : 16,
+            paddingVertical: deviceType === 'mobile' ? 8 : 10,
           }
         ]}
         onPress={() => setSelectedCategory(category.id as ResourceCategory)}
@@ -291,7 +287,10 @@ export default function CasesScreen() {
         <Text
           style={[
             styles.categoryChipText,
-            { color: isSelected ? 'white' : colors.text }
+            { 
+              color: isSelected ? 'white' : colors.text,
+              fontSize: deviceType === 'mobile' ? 14 : 15,
+            }
           ]}
         >
           {category.label}
@@ -308,8 +307,7 @@ export default function CasesScreen() {
         { 
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          width: cardWidth,
-          marginBottom: deviceType === 'mobile' ? 12 : 16,
+          padding: deviceType === 'mobile' ? 12 : 16,
         }
       ]}
     >
@@ -318,7 +316,13 @@ export default function CasesScreen() {
       <View style={styles.resourceContent}>
         <View style={styles.resourceHeader}>
           <View style={styles.resourceTitleContainer}>
-            <Text style={[styles.resourceTitle, { color: colors.text }]} numberOfLines={2}>
+            <Text style={[
+              styles.resourceTitle, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 16 : 18,
+              }
+            ]} numberOfLines={2}>
               {resource.title}
             </Text>
             <TouchableOpacity
@@ -340,7 +344,13 @@ export default function CasesScreen() {
           </View>
         </View>
 
-        <Text style={[styles.resourceDescription, { color: colors.textSecondary }]} numberOfLines={3}>
+        <Text style={[
+          styles.resourceDescription, 
+          { 
+            color: colors.textSecondary,
+            fontSize: deviceType === 'mobile' ? 14 : 15,
+          }
+        ]} numberOfLines={3}>
           {resource.description}
         </Text>
 
@@ -411,63 +421,110 @@ export default function CasesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.content, { paddingHorizontal: padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Recovery Resources</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            Find help and support services in your area
-          </Text>
-        </View>
+      <HomeButton />
+      <ResponsiveContainer>
+        <View style={[styles.content, { marginTop: deviceType === 'mobile' ? 70 : 80 }]}>
+          <View style={styles.header}>
+            <Text style={[
+              styles.headerTitle, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 24 : 28,
+              }
+            ]}>
+              Recovery Resources
+            </Text>
+            <Text style={[
+              styles.headerSubtitle, 
+              { 
+                color: colors.textSecondary,
+                fontSize: deviceType === 'mobile' ? 16 : 18,
+              }
+            ]}>
+              Find help and support services in your area
+            </Text>
+          </View>
 
-        <View style={styles.searchSection}>
-          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Search size={20} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search resources, services, or keywords..."
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+          <View style={styles.searchSection}>
+            <View style={[
+              styles.searchContainer, 
+              { 
+                backgroundColor: colors.surface, 
+                borderColor: colors.border,
+                height: deviceType === 'mobile' ? 44 : 48,
+              }
+            ]}>
+              <Search size={20} color={colors.textSecondary} />
+              <TextInput
+                style={[
+                  styles.searchInput, 
+                  { 
+                    color: colors.text,
+                    fontSize: deviceType === 'mobile' ? 16 : 17,
+                  }
+                ]}
+                placeholder="Search resources, services, or keywords..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            
+            <TouchableOpacity 
+              style={[
+                styles.filterButton, 
+                { 
+                  backgroundColor: colors.surface, 
+                  borderColor: colors.border,
+                  width: deviceType === 'mobile' ? 44 : 48,
+                  height: deviceType === 'mobile' ? 44 : 48,
+                }
+              ]}
+              onPress={() => console.log('Filter pressed')}
+            >
+              <Filter size={20} color={colors.primary} />
+            </TouchableOpacity>
           </View>
           
-          <TouchableOpacity 
-            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => console.log('Filter pressed')}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.categoriesContainer}
+            contentContainerStyle={styles.categoriesList}
           >
-            <Filter size={20} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.categoriesContainer}
-          contentContainerStyle={styles.categoriesList}
-        >
-          {categories.map(renderCategoryChip)}
-        </ScrollView>
-        
-        <View style={styles.resultsHeader}>
-          <Text style={[styles.resultsText, { color: colors.text }]}>
-            {filteredResources.length} {filteredResources.length === 1 ? 'resource' : 'resources'} found
-          </Text>
-          {favorites.size > 0 && (
-            <Text style={[styles.favoritesText, { color: colors.primary }]}>
-              {favorites.size} saved
+            {categories.map(renderCategoryChip)}
+          </ScrollView>
+          
+          <View style={styles.resultsHeader}>
+            <Text style={[
+              styles.resultsText, 
+              { 
+                color: colors.text,
+                fontSize: deviceType === 'mobile' ? 14 : 15,
+              }
+            ]}>
+              {filteredResources.length} {filteredResources.length === 1 ? 'resource' : 'resources'} found
             </Text>
-          )}
-        </View>
-        
-        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
-          <View style={[
-            styles.resultsGrid,
-            deviceType !== 'mobile' ? styles.gridContainer : null
-          ]}>
-            {filteredResources.map(renderResourceCard)}
+            {favorites.size > 0 && (
+              <Text style={[
+                styles.favoritesText, 
+                { 
+                  color: colors.primary,
+                  fontSize: deviceType === 'mobile' ? 14 : 15,
+                }
+              ]}>
+                {favorites.size} saved
+              </Text>
+            )}
           </View>
-        </ScrollView>
-      </View>
+          
+          <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+            <ResponsiveGrid minItemWidth={320} gap={deviceType === 'mobile' ? 12 : 16}>
+              {filteredResources.map(renderResourceCard)}
+            </ResponsiveGrid>
+          </ScrollView>
+        </View>
+      </ResponsiveContainer>
       <BoltBadge />
     </SafeAreaView>
   );
@@ -479,18 +536,17 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 12,
+    paddingBottom: 80,
   },
   header: {
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    // fontSize handled in component
   },
   searchSection: {
     flexDirection: 'row',
@@ -502,7 +558,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
     borderRadius: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
@@ -511,11 +566,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     marginLeft: 8,
-    fontSize: 16,
   },
   filterButton: {
-    width: 44,
-    height: 44,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -530,8 +582,6 @@ const styles = StyleSheet.create({
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 16,
     marginRight: 8,
     borderWidth: 1,
@@ -542,7 +592,6 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontWeight: '500',
-    fontSize: 14,
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -551,23 +600,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   resultsText: {
-    fontSize: 14,
     fontWeight: '500',
   },
   favoritesText: {
-    fontSize: 14,
     fontWeight: '500',
   },
   resultsContainer: {
     flex: 1,
-  },
-  resultsGrid: {
-    paddingBottom: 80,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
   },
   resourceCard: {
     borderRadius: 12,
@@ -579,7 +618,7 @@ const styles = StyleSheet.create({
     height: 120,
   },
   resourceContent: {
-    padding: 12,
+    // padding handled in component
   },
   resourceHeader: {
     marginBottom: 8,
@@ -592,7 +631,6 @@ const styles = StyleSheet.create({
   },
   resourceTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
     flex: 1,
     paddingRight: 8,
   },
@@ -610,7 +648,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   resourceDescription: {
-    fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
   },
