@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name,
         email: data.user.email!,
-        isPremium: false,
+        isPremium: true, // Set to true for testing
       };
       setUser(newUser);
       
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: false,
+        isPremium: true, // Set to true for testing
       };
       setUser(newUser);
       
@@ -234,7 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: false,
+        isPremium: true, // Set to true for testing
       };
     } catch (error) {
       console.error('Failed to get current user:', error);
@@ -260,6 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       
       if (storedUserData && storedToken) {
         const userData = JSON.parse(storedUserData);
+        // Ensure premium status is true for testing
+        userData.isPremium = true;
         setUser(userData);
       }
       
@@ -277,7 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: false,
+        isPremium: true, // Set to true for testing
       };
       
       setUser(currentUser);
