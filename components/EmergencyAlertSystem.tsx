@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { tavusService } from '@/services/tavusService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
-import { AlertTriangle, Volume2, Video, X, Send } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, Volume2, Video, X, Send } from 'lucide-react-native';
 
 interface EmergencyAlertSystemProps {
   visible: boolean;
