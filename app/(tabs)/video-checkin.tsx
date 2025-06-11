@@ -9,7 +9,7 @@ import { tavusService } from '@/services/tavusService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
 import { Video, ResizeMode } from 'expo-av';
-import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, TriangleAlert as AlertTriangle, Volume2 } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, TriangleAlert as AlertTriangle, Volume2, CheckCircle } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
 
@@ -39,6 +39,7 @@ export default function VideoCheckinScreen() {
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -58,6 +59,12 @@ export default function VideoCheckinScreen() {
     analyticsService.trackScreen('video_checkin');
     loadVideoHistory();
     checkServiceHealth();
+    
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
   }, []);
 
   const checkServiceHealth = async () => {
@@ -72,8 +79,7 @@ export default function VideoCheckinScreen() {
   };
 
   const loadVideoHistory = async () => {
-    // In a real app, this would load from storage or API
-    // For now, we'll check if there's a recent video
+    // In a real app, this would load from Supabase
     const mockHistory: VideoCheckIn[] = [
       {
         id: '1',
@@ -146,8 +152,8 @@ export default function VideoCheckinScreen() {
         setVideoCheckIns(prev => [newVideoCheckIn, ...prev]);
         setCurrentVideo(newVideoCheckIn);
         
-        // Poll for completion
-        pollVideoStatus(result.videoId, newVideoCheckIn.id);
+        // Start polling for completion
+        startPollingVideoStatus(result.videoId, newVideoCheckIn.id);
         
         // Award points for using AI video feature
         addPoints(25, 'Generated AI video check-in');
@@ -194,75 +200,11 @@ export default function VideoCheckinScreen() {
     }
   };
 
-  const generateEmergencyAlert = async (alertText: string) => {
-    if (!user?.isPremium) {
-      setShowPaywall(true);
-      return;
-    }
-
-    setIsGenerating(true);
-    setError(null);
-
-    try {
-      // Generate emergency alert script
-      const script = tavusService.generateEmergencyAlertScript({
-        alertText,
-        severity: 'high',
-        location: 'Your Area',
-        timestamp: new Date(),
-        instructions: [
-          'Stay indoors and avoid unnecessary travel',
-          'Monitor official emergency channels',
-          'Keep emergency supplies ready'
-        ]
-      });
-
-      // Generate both video and audio for emergency alerts
-      const [videoResult, audioUrl] = await Promise.all([
-        tavusService.generateVideo(script, user.id),
-        elevenLabsService.generateEmergencyAlert(script)
-      ]);
-
-      if (videoResult || audioUrl) {
-        const emergencyCheckIn: VideoCheckIn = {
-          id: Date.now().toString(),
-          videoId: videoResult?.videoId || 'emergency_audio_' + Date.now(),
-          status: videoResult ? 'generating' : 'completed',
-          createdAt: new Date(),
-          script,
-          isEmergencyAlert: true
-        };
-
-        setVideoCheckIns(prev => [emergencyCheckIn, ...prev]);
-        setCurrentVideo(emergencyCheckIn);
-
-        // Play audio immediately for emergency alerts
-        if (audioUrl) {
-          await elevenLabsService.playAudio(audioUrl);
-        }
-
-        if (videoResult) {
-          pollVideoStatus(videoResult.videoId, emergencyCheckIn.id);
-        }
-
-        analyticsService.trackEvent('emergency_alert_generated', {
-          videoId: videoResult?.videoId,
-          hasAudio: !!audioUrl
-        });
-      }
-    } catch (error) {
-      console.error('Emergency alert generation failed:', error);
-      setError('Emergency alert generation failed');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const pollVideoStatus = async (videoId: string, checkInId: string) => {
-    const maxAttempts = 30; // 5 minutes with 10-second intervals
+  const startPollingVideoStatus = (videoId: string, checkInId: string) => {
     let attempts = 0;
-
-    const poll = async () => {
+    const maxAttempts = 30; // 5 minutes with 10-second intervals
+    
+    const interval = setInterval(async () => {
       attempts++;
       
       try {
@@ -281,6 +223,8 @@ export default function VideoCheckinScreen() {
           
           if (status.status === 'completed' && status.videoUrl) {
             analyticsService.trackEvent('video_checkin_ready', { videoId });
+            clearInterval(interval);
+            setPollingInterval(null);
             return;
           }
           
@@ -291,36 +235,24 @@ export default function VideoCheckinScreen() {
               videoId,
               status: status.status
             });
+            clearInterval(interval);
+            setPollingInterval(null);
             return;
           }
-        } else {
-          throw new Error('Failed to get video status');
         }
       } catch (error) {
         console.error('Video status polling error:', error);
-        if (attempts >= maxAttempts) {
-          setError('Video generation timed out. Please try again.');
-          setFallbackMode(true);
-          return;
-        }
       }
 
-      if (attempts < maxAttempts && status?.status === 'generating') {
-        setTimeout(poll, 10000); // Poll every 10 seconds
+      if (attempts >= maxAttempts) {
+        setError('Video generation timed out. Please try again.');
+        setFallbackMode(true);
+        clearInterval(interval);
+        setPollingInterval(null);
       }
-    };
+    }, 10000); // Poll every 10 seconds
 
-    poll();
-  };
-
-  const handlePlayPause = () => {
-    if (videoStatus.isPlaying) {
-      setVideoStatus(prev => ({ ...prev, isPlaying: false }));
-      analyticsService.trackEvent('video_checkin_paused');
-    } else {
-      setVideoStatus(prev => ({ ...prev, isPlaying: true }));
-      analyticsService.trackEvent('video_checkin_played');
-    }
+    setPollingInterval(interval);
   };
 
   const handleRegenerate = () => {
@@ -334,6 +266,10 @@ export default function VideoCheckinScreen() {
           setCurrentVideo(null);
           setError(null);
           setFallbackMode(false);
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            setPollingInterval(null);
+          }
         }}
       ]
     );
@@ -396,8 +332,10 @@ export default function VideoCheckinScreen() {
           if (currentVideo?.script) {
             try {
               await elevenLabsService.generateAndPlaySpeech(currentVideo.script);
+              analyticsService.trackEvent('fallback_audio_played', { videoId: currentVideo.videoId });
             } catch (error) {
               console.error('Audio playback failed:', error);
+              Alert.alert('Error', 'Could not play audio message. Please try again.');
             }
           }
         }}
@@ -409,7 +347,7 @@ export default function VideoCheckinScreen() {
   );
 
   const renderVideoPlayer = () => {
-    if (!currentVideo?.videoUrl) return null;
+    if (!currentVideo?.videoUrl || fallbackMode) return null;
 
     return (
       <View style={[styles.videoContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -419,7 +357,21 @@ export default function VideoCheckinScreen() {
           useNativeControls
           resizeMode={ResizeMode.CONTAIN}
           isLooping={false}
-          onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
+          shouldPlay={false}
+          onPlaybackStatusUpdate={(status) => {
+            setVideoStatus(status);
+            if (status.isLoaded && status.didJustFinish) {
+              analyticsService.trackEvent('video_checkin_completed', { 
+                videoId: currentVideo.videoId,
+                duration: status.durationMillis 
+              });
+            }
+          }}
+          onError={(error) => {
+            console.error('Video playback error:', error);
+            setError('Video playback failed. Please try again.');
+            setFallbackMode(true);
+          }}
         />
         
         <View style={styles.videoOverlay}>
@@ -434,12 +386,10 @@ export default function VideoCheckinScreen() {
                 </Text>
               </View>
             )}
-            {currentVideo.isEmergencyAlert && (
-              <View style={[styles.emergencyBadge, { backgroundColor: colors.error + '20' }]}>
-                <AlertTriangle size={12} color={colors.error} />
-                <Text style={[styles.emergencyBadgeText, { color: colors.error }]}>
-                  Emergency Alert
-                </Text>
+            {currentVideo.status === 'completed' && (
+              <View style={[styles.statusBadge, { backgroundColor: colors.success + '20' }]}>
+                <CheckCircle size={12} color={colors.success} />
+                <Text style={[styles.statusBadgeText, { color: colors.success }]}>Ready</Text>
               </View>
             )}
           </View>
@@ -460,10 +410,12 @@ export default function VideoCheckinScreen() {
         Our AI is crafting a personalized video message based on your mood and recovery progress. This usually takes 2-3 minutes.
       </Text>
       
+      <ActivityIndicator size="large" color={colors.primary} style={styles.loadingIndicator} />
+      
       {currentVideo && (
         <View style={[styles.statusContainer, { backgroundColor: colors.primaryLight }]}>
           <Text style={[styles.statusText, { color: colors.primary }]}>
-            Status: {currentVideo.status}
+            Status: {currentVideo.status === 'generating' ? 'Processing...' : currentVideo.status}
           </Text>
         </View>
       )}
@@ -506,14 +458,6 @@ export default function VideoCheckinScreen() {
                   {moodOptions.find(m => m.id === checkIn.mood)?.emoji} {checkIn.mood}
                 </Text>
               )}
-              {checkIn.isEmergencyAlert && (
-                <View style={[styles.emergencyIndicator, { backgroundColor: colors.error + '20' }]}>
-                  <AlertTriangle size={12} color={colors.error} />
-                  <Text style={[styles.emergencyIndicatorText, { color: colors.error }]}>
-                    Emergency
-                  </Text>
-                </View>
-              )}
               <View style={[
                 styles.statusIndicator,
                 { backgroundColor: checkIn.status === 'completed' ? colors.success : 
@@ -551,7 +495,7 @@ export default function VideoCheckinScreen() {
         <Text style={[styles.featureItem, { color: colors.text }]}>• Adapts to your current emotional state</Text>
         <Text style={[styles.featureItem, { color: colors.text }]}>• Celebrates your achievements and milestones</Text>
         <Text style={[styles.featureItem, { color: colors.text }]}>• Provides encouragement during difficult times</Text>
-        <Text style={[styles.featureItem, { color: colors.text }]}>• Emergency alert system with audio fallback</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Audio fallback when video isn't available</Text>
       </View>
 
       {!user?.isPremium && (
@@ -577,7 +521,7 @@ export default function VideoCheckinScreen() {
 
         {isGenerating ? (
           renderGeneratingState()
-        ) : currentVideo?.videoUrl && !fallbackMode ? (
+        ) : currentVideo && !fallbackMode && currentVideo.videoUrl ? (
           <View style={styles.videoSection}>
             {renderVideoPlayer()}
             
@@ -604,7 +548,7 @@ export default function VideoCheckinScreen() {
 
             {renderVideoHistory()}
           </View>
-        ) : currentVideo && fallbackMode ? (
+        ) : currentVideo && (fallbackMode || currentVideo.status === 'failed') ? (
           <View style={styles.videoSection}>
             {renderFallbackContent()}
             
@@ -633,6 +577,7 @@ export default function VideoCheckinScreen() {
                     styles.generateButton,
                     { 
                       backgroundColor: selectedMood ? colors.primary : colors.disabled,
+                      opacity: isGenerating ? 0.7 : 1
                     }
                   ]}
                   onPress={generatePersonalizedVideo}
@@ -640,18 +585,7 @@ export default function VideoCheckinScreen() {
                 >
                   <Sparkles size={20} color="white" />
                   <Text style={[styles.generateButtonText, { color: 'white' }]}>
-                    Generate My Check-in
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Emergency Alert Test Button (for development) */}
-                <TouchableOpacity
-                  style={[styles.emergencyButton, { backgroundColor: colors.error }]}
-                  onPress={() => generateEmergencyAlert('This is a test emergency alert. Please remain calm and follow safety protocols.')}
-                >
-                  <AlertTriangle size={20} color="white" />
-                  <Text style={[styles.generateButtonText, { color: 'white' }]}>
-                    Test Emergency Alert
+                    {isGenerating ? 'Generating...' : 'Generate My Check-in'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -776,7 +710,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  emergencyBadge: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -784,7 +718,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 4,
   },
-  emergencyBadgeText: {
+  statusBadgeText: {
     fontSize: 12,
     fontWeight: '600',
   },
@@ -877,6 +811,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 20,
   },
+  loadingIndicator: {
+    marginBottom: 20,
+  },
   statusContainer: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -964,15 +901,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  emergencyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
   generateButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -1018,19 +946,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-  },
-  emergencyIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 8,
-    gap: 4,
-  },
-  emergencyIndicatorText: {
-    fontSize: 10,
-    fontWeight: '600',
   },
   statusIndicator: {
     paddingHorizontal: 6,
