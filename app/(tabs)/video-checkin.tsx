@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { tavusService } from '@/services/tavusService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, TriangleAlert as AlertTriangle, Volume2, CircleCheck as CheckCircle } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
@@ -35,11 +35,11 @@ export default function VideoCheckinScreen() {
   const [currentVideo, setCurrentVideo] = useState<VideoCheckIn | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [videoStatus, setVideoStatus] = useState<any>({});
+  const [videoStatus, setVideoStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [fallbackMode, setFallbackMode] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<ReturnType<typeof setInterval> | null>(null);
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -142,7 +142,7 @@ export default function VideoCheckinScreen() {
         const newVideoCheckIn: VideoCheckIn = {
           id: Date.now().toString(),
           videoId: result.videoId,
-          status: result.status as any,
+          status: result.status as 'generating' | 'completed' | 'failed',
           createdAt: new Date(),
           script,
           mood: selectedMood,
@@ -213,12 +213,12 @@ export default function VideoCheckinScreen() {
         if (status) {
           setVideoCheckIns(prev => prev.map(checkIn => 
             checkIn.id === checkInId 
-              ? { ...checkIn, status: status.status as any, videoUrl: status.videoUrl }
+              ? { ...checkIn, status: status.status as 'generating' | 'completed' | 'failed', videoUrl: status.videoUrl }
               : checkIn
           ));
 
           if (currentVideo?.id === checkInId) {
-            setCurrentVideo(prev => prev ? { ...prev, status: status.status as any, videoUrl: status.videoUrl } : null);
+            setCurrentVideo(prev => prev ? { ...prev, status: status.status as 'generating' | 'completed' | 'failed', videoUrl: status.videoUrl } : null);
           }
           
           if (status.status === 'completed' && status.videoUrl) {
@@ -358,7 +358,7 @@ export default function VideoCheckinScreen() {
           resizeMode={ResizeMode.CONTAIN}
           isLooping={false}
           shouldPlay={false}
-          onPlaybackStatusUpdate={(status) => {
+          onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
             setVideoStatus(status);
             if (status.isLoaded && status.didJustFinish) {
               analyticsService.trackEvent('video_checkin_completed', { 
