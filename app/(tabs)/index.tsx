@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, SafeAreaView, Animated } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
@@ -14,6 +14,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { deviceType, padding } = useResponsive();
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   const quickActions = [
     {
@@ -101,6 +102,13 @@ export default function HomeScreen() {
     };
 
     initializeSupabase();
+
+    // Animate in the content
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const getHeaderFontSize = () => {
@@ -145,114 +153,129 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ResponsiveContainer>
-          <View style={[styles.header, { marginTop: deviceType === 'mobile' ? 12 : 20 }]}>
-            <View>
+          <Animated.View style={[{ opacity: fadeAnim }, { marginTop: deviceType === 'mobile' ? 12 : 20 }]}>
+            <View style={styles.header}>
+              <View>
+                <Text style={[
+                  styles.greeting, 
+                  { 
+                    color: colors.text,
+                    fontSize: getHeaderFontSize(),
+                  }
+                ]}>
+                  Hello, {user?.name?.split(' ')[0] || 'there'}
+                </Text>
+                <Text style={[
+                  styles.subtitle, 
+                  { 
+                    color: colors.textSecondary,
+                    fontSize: deviceType === 'mobile' ? 16 : 18,
+                  }
+                ]}>
+                  Let's continue your recovery journey
+                </Text>
+              </View>
+            </View>
+
+            {/* Real-time alerts display */}
+            {alerts.map((alert) => (
+              <Animated.View 
+                key={alert.id} 
+                style={[
+                  styles.alertBanner, 
+                  { 
+                    backgroundColor: colors.primaryLight,
+                    marginBottom: 16,
+                  }
+                ]}
+              >
+                <Bell size={16} color={colors.primary} />
+                <Text style={[styles.alertText, { color: colors.primary }]}>
+                  {alert.message}
+                </Text>
+              </Animated.View>
+            ))}
+
+            {/* Quick Actions Section */}
+            <View style={styles.quickActionsSection}>
               <Text style={[
-                styles.greeting, 
+                styles.sectionTitle, 
                 { 
                   color: colors.text,
-                  fontSize: getHeaderFontSize(),
+                  fontSize: getSectionTitleSize(),
                 }
               ]}>
-                Hello, {user?.name?.split(' ')[0] || 'there'}
+                Quick Actions
               </Text>
               <Text style={[
-                styles.subtitle, 
+                styles.sectionSubtitle, 
                 { 
                   color: colors.textSecondary,
                   fontSize: deviceType === 'mobile' ? 16 : 18,
+                  marginBottom: deviceType === 'mobile' ? 20 : 24,
                 }
               ]}>
-                Let's continue your recovery journey
+                Access your most important recovery tools
               </Text>
+              
+              <ResponsiveGrid minItemWidth={280} gap={deviceType === 'mobile' ? 12 : 16}>
+                {quickActions.map((action) => (
+                  <Card
+                    key={action.id}
+                    title={action.title}
+                    description={action.description}
+                    icon={action.icon}
+                    color={action.color}
+                    onPress={action.onPress}
+                  />
+                ))}
+              </ResponsiveGrid>
             </View>
-          </View>
 
-          {/* Real-time alerts display */}
-          {alerts.map((alert) => (
-            <View 
-              key={alert.id} 
-              style={[
-                styles.alertBanner, 
+            {/* Welcome Message for New Users */}
+            <View style={[
+              styles.welcomeCard, 
+              { 
+                backgroundColor: colors.surface, 
+                borderColor: colors.border,
+                padding: deviceType === 'mobile' ? 20 : 24,
+                marginTop: deviceType === 'mobile' ? 32 : 40,
+              }
+            ]}>
+              <Text style={[
+                styles.welcomeTitle, 
                 { 
-                  backgroundColor: colors.primaryLight,
-                  marginBottom: 16,
+                  color: colors.text,
+                  fontSize: deviceType === 'mobile' ? 20 : 22,
                 }
-              ]}
-            >
-              <Bell size={16} color={colors.primary} />
-              <Text style={[styles.alertText, { color: colors.primary }]}>
-                {alert.message}
+              ]}>
+                Welcome to Rebuild
               </Text>
+              <Text style={[
+                styles.welcomeText, 
+                { 
+                  color: colors.textSecondary,
+                  fontSize: deviceType === 'mobile' ? 16 : 17,
+                  lineHeight: deviceType === 'mobile' ? 24 : 26,
+                }
+              ]}>
+                Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
+              </Text>
+              
+              <View style={[styles.featuresHighlight, { backgroundColor: colors.primaryLight, marginTop: 16 }]}>
+                <Text style={[styles.featuresTitle, { color: colors.primary }]}>
+                  🚀 Built with cutting-edge technology:
+                </Text>
+                <Text style={[styles.featuresList, { color: colors.text }]}>
+                  • AI-powered personalized video check-ins{'\n'}
+                  • Voice-enabled emotional support{'\n'}
+                  • Blockchain-verified document storage{'\n'}
+                  • Real-time emergency alerts{'\n'}
+                  • Comprehensive recovery planning
+                </Text>
+              </View>
             </View>
-          ))}
-
-          {/* Quick Actions Section */}
-          <View style={styles.quickActionsSection}>
-            <Text style={[
-              styles.sectionTitle, 
-              { 
-                color: colors.text,
-                fontSize: getSectionTitleSize(),
-              }
-            ]}>
-              Quick Actions
-            </Text>
-            <Text style={[
-              styles.sectionSubtitle, 
-              { 
-                color: colors.textSecondary,
-                fontSize: deviceType === 'mobile' ? 16 : 18,
-                marginBottom: deviceType === 'mobile' ? 20 : 24,
-              }
-            ]}>
-              Access your most important recovery tools
-            </Text>
-            
-            <ResponsiveGrid minItemWidth={280} gap={deviceType === 'mobile' ? 12 : 16}>
-              {quickActions.map((action) => (
-                <Card
-                  key={action.id}
-                  title={action.title}
-                  description={action.description}
-                  icon={action.icon}
-                  color={action.color}
-                  onPress={action.onPress}
-                />
-              ))}
-            </ResponsiveGrid>
-          </View>
-
-          {/* Welcome Message for New Users */}
-          <View style={[
-            styles.welcomeCard, 
-            { 
-              backgroundColor: colors.surface, 
-              borderColor: colors.border,
-              padding: deviceType === 'mobile' ? 20 : 24,
-              marginTop: deviceType === 'mobile' ? 32 : 40,
-            }
-          ]}>
-            <Text style={[
-              styles.welcomeTitle, 
-              { 
-                color: colors.text,
-                fontSize: deviceType === 'mobile' ? 20 : 22,
-              }
-            ]}>
-              Welcome to Rebuild
-            </Text>
-            <Text style={[
-              styles.welcomeText, 
-              { 
-                color: colors.textSecondary,
-                fontSize: deviceType === 'mobile' ? 16 : 17,
-                lineHeight: deviceType === 'mobile' ? 24 : 26,
-              }
-            ]}>
-              Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
-            </Text>
-          </View>
+          </Animated.View>
         </ResponsiveContainer>
       </ScrollView>
     </SafeAreaView>
@@ -308,5 +331,18 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     lineHeight: 24,
+  },
+  featuresHighlight: {
+    borderRadius: 8,
+    padding: 12,
+  },
+  featuresTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  featuresList: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

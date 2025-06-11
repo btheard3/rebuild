@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
+import { analyticsService } from '@/services/analyticsService';
 import { FileText, Share as ShareIcon, Download, CircleCheck as CheckCircle } from 'lucide-react-native';
 
 export default function SummaryStep() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { data } = useWizard();
   const { deviceType } = useResponsive();
   
@@ -33,6 +36,44 @@ export default function SummaryStep() {
   
   const disasterTypeDisplayName = data.disasterType ? disasterNames[data.disasterType] : 'Unknown';
   const disasterImage = data.disasterType ? disasterTypeImage[data.disasterType] : disasterTypeImage.other;
+  
+  const saveRecoveryPlan = async () => {
+    try {
+      const response = await fetch('/api/recovery-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          planData: data,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        analyticsService.trackEvent('recovery_plan_saved', {
+          planId: result.planId,
+          priorityScore: result.priorityScore,
+          recommendationsCount: result.recommendations?.length || 0,
+        });
+        
+        console.log('Recovery plan saved successfully:', result);
+      } else {
+        console.error('Failed to save recovery plan:', result.error);
+      }
+    } catch (error) {
+      console.error('Error saving recovery plan:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    // Auto-save the recovery plan when the summary is displayed
+    if (user && data.disasterType) {
+      saveRecoveryPlan();
+    }
+  }, [user, data]);
   
   const renderSelectedNeeds = () => {
     if (!data.immediateNeeds) return null;
@@ -72,6 +113,11 @@ export default function SummaryStep() {
       await Share.share({
         message: `My disaster recovery plan for ${disasterTypeDisplayName} recovery.\n\nContact information: ${data.personalInfo?.name}, ${data.personalInfo?.phone}\n\nCurrent location: ${data.personalInfo?.address}\n\nImmediate needs: ${data.immediateNeeds?.shelter ? 'Shelter, ' : ''}${data.immediateNeeds?.food ? 'Food, ' : ''}${data.immediateNeeds?.medical ? 'Medical, ' : ''}${data.immediateNeeds?.utilities ? 'Utilities, ' : ''}${data.immediateNeeds?.transportation ? 'Transportation, ' : ''}${data.immediateNeeds?.other ? 'Other' : ''}\n\nGenerated with Rebuild app`,
         title: 'My Recovery Plan',
+      });
+      
+      analyticsService.trackEvent('recovery_plan_shared', {
+        disasterType: data.disasterType,
+        hasInsurance: data.insurance?.hasInsurance,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -183,7 +229,10 @@ export default function SummaryStep() {
       ]}>
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: colors.primary }]}
-          onPress={() => console.log('Download PDF')}
+          onPress={() => {
+            analyticsService.trackEvent('recovery_plan_download_requested');
+            console.log('Download PDF');
+          }}
         >
           <Download size={20} color="white" />
           <Text style={styles.actionButtonText}>Save PDF</Text>

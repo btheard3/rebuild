@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Alert, Modal } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/context/GamificationContext';
@@ -7,10 +7,12 @@ import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyticsService } from '@/services/analyticsService';
 import { algorandService } from '@/services/algorandService';
-import { Search, Filter, FolderPlus, FileText, Image as ImageIcon, Shield, Crown } from 'lucide-react-native';
+import { supabase } from '@/services/supabaseClient';
+import { Search, Filter, FolderPlus, FileText, Image as ImageIcon, Shield, Crown, Camera, X } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
+import CameraCapture from '@/components/CameraCapture';
 
 type ResourceCategory = 'All' | 'Documents' | 'Images' | 'Insurance' | 'Medical' | 'Legal';
 
@@ -35,6 +37,7 @@ export default function ResourcesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('All');
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [verifyingDocument, setVerifyingDocument] = useState<string | null>(null);
 
   const getPadding = getResponsiveValue(16, 24, 32);
@@ -47,9 +50,9 @@ export default function ResourcesScreen() {
 
   useEffect(() => {
     analyticsService.trackScreen('resources');
+    loadResources();
   }, []);
 
-  // Updated with more inclusive images
   const [resources, setResources] = useState<ResourceItem[]>([
     {
       id: '1',
@@ -102,6 +105,68 @@ export default function ResourcesScreen() {
     return matchesSearch && matchesCategory;
   });
 
+  const loadResources = async () => {
+    try {
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_documents')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Failed to load resources:', error);
+        } else if (data) {
+          const formattedResources = data.map((doc: any) => ({
+            id: doc.id,
+            name: doc.name,
+            dateAdded: doc.created_at.split('T')[0],
+            type: doc.type,
+            category: doc.category,
+            size: doc.size || 'Unknown',
+            uri: doc.file_path,
+            previewUrl: doc.preview_url,
+            blockchainHash: doc.blockchain_hash,
+            verified: !!doc.blockchain_hash,
+          }));
+          setResources(prev => [...formattedResources, ...prev]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading resources:', error);
+    }
+  };
+
+  const saveResourceToSupabase = async (resource: Omit<ResourceItem, 'id'>) => {
+    try {
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_documents')
+          .insert([{
+            user_id: user.id,
+            name: resource.name,
+            type: resource.type,
+            category: resource.category,
+            size: resource.size,
+            file_path: resource.uri,
+            preview_url: resource.previewUrl,
+            blockchain_hash: resource.blockchainHash,
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Failed to save resource:', error);
+        } else {
+          return data.id;
+        }
+      }
+    } catch (error) {
+      console.error('Error saving resource:', error);
+    }
+    return null;
+  };
+
   const handleDocumentUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -124,6 +189,12 @@ export default function ResourcesScreen() {
         uri: result.assets[0].uri,
         verified: false,
       };
+
+      // Save to Supabase
+      const savedId = await saveResourceToSupabase(newDocument);
+      if (savedId) {
+        newDocument.id = savedId;
+      }
 
       setResources(prev => [newDocument, ...prev]);
       
@@ -148,6 +219,44 @@ export default function ResourcesScreen() {
     }
   };
 
+  const handleCameraCapture = async (imageUri: string) => {
+    try {
+      const fileName = `damage_photo_${Date.now()}.jpg`;
+      const newImage: ResourceItem = {
+        id: Date.now().toString(),
+        name: fileName,
+        dateAdded: new Date().toISOString().split('T')[0],
+        type: 'image',
+        category: 'Insurance',
+        size: 'Unknown',
+        uri: imageUri,
+        previewUrl: imageUri,
+        verified: false,
+      };
+
+      // Save to Supabase
+      const savedId = await saveResourceToSupabase(newImage);
+      if (savedId) {
+        newImage.id = savedId;
+      }
+
+      setResources(prev => [newImage, ...prev]);
+      setShowCamera(false);
+      
+      analyticsService.trackEvent('damage_photo_captured', {
+        category: newImage.category
+      });
+      
+      addPoints(25, 'Captured damage photo');
+      
+      Alert.alert('Success', 'Damage photo captured and saved!');
+      
+    } catch (error) {
+      console.error('Error saving captured image:', error);
+      Alert.alert('Error', 'Failed to save captured image. Please try again.');
+    }
+  };
+
   const handleVerifyOnBlockchain = async (resourceId: string) => {
     if (!user?.isPremium) {
       setShowPaywall(true);
@@ -162,8 +271,6 @@ export default function ResourcesScreen() {
     analyticsService.trackEvent('blockchain_verification_started', { resource_id: resourceId });
 
     try {
-      // In a real implementation, you would read the actual file content
-      // For demo purposes, we'll use the resource name as content
       const mockContent = `Document: ${resource.name}\nDate: ${resource.dateAdded}\nSize: ${resource.size}`;
       
       const result = await algorandService.storeDocumentHash(mockContent);
@@ -175,6 +282,14 @@ export default function ResourcesScreen() {
             ? { ...r, verified: true, blockchainHash: result.hash }
             : r
         ));
+
+        // Update in Supabase
+        if (user) {
+          await supabase
+            .from('user_documents')
+            .update({ blockchain_hash: result.hash })
+            .eq('id', resourceId);
+        }
 
         addPoints(50, 'Document verified on blockchain');
         
@@ -378,14 +493,33 @@ export default function ResourcesScreen() {
           />
         )}
         
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={handleDocumentUpload}
-        >
-          <FolderPlus size={24} color="white" />
-          <Text style={styles.addButtonText}>Add Document</Text>
-        </TouchableOpacity>
+        <View style={styles.addButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={handleDocumentUpload}
+          >
+            <FolderPlus size={20} color="white" />
+            <Text style={styles.addButtonText}>Add Document</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.accent }]}
+            onPress={() => setShowCamera(true)}
+          >
+            <Camera size={20} color="white" />
+            <Text style={styles.addButtonText}>Take Photo</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <Modal visible={showCamera} animationType="slide" presentationStyle="fullScreen">
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+          title="Document Damage"
+          description="Take photos for insurance claims and recovery records"
+        />
+      </Modal>
 
       <PaywallScreen 
         visible={showPaywall} 
@@ -463,7 +597,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   resourcesList: {
-    paddingBottom: 80,
+    paddingBottom: 120,
   },
   row: {
     justifyContent: 'space-between',
@@ -539,20 +673,29 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'monospace',
   },
-  addButton: {
-    flexDirection: 'row',
+  addButtonsContainer: {
     position: 'absolute',
     bottom: 20,
-    alignSelf: 'center',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
     paddingHorizontal: 20,
+  },
+  addButton: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 24,
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   addButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
     marginLeft: 8,
   },
 });
