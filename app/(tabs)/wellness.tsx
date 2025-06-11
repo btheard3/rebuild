@@ -1,467 +1,338 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
-import { useAuth } from '@/context/AuthContext';
-import { useGamification } from '@/context/GamificationContext';
-import { useResponsive } from '@/hooks/useResponsive';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { analyticsService } from '@/services/analyticsService';
-import { elevenLabsService } from '@/services/elevenLabsService';
-import HomeButton from '@/components/HomeButton';
-import ResponsiveContainer from '@/components/ResponsiveContainer';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
-import { BookOpen, Clock, VolumeX, Volume2, Pencil, ChartBar as BarChart, Crown, Lock } from 'lucide-react-native';
-import BoltBadge from '@/components/BoltBadge';
-import PaywallScreen from '@/components/PaywallScreen';
+import { router } from 'expo-router';
+import { BookOpen, Clock, BarChart3, Heart, Sparkles } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width } = Dimensions.get('window');
+
+type Mood = 'great' | 'good' | 'okay' | 'sad' | 'stressed';
+
+interface MoodOption {
+  id: Mood;
+  emoji: string;
+  label: string;
+  color: string;
+  description: string;
+}
+
+interface WellnessTool {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  route: string;
+}
 
 export default function WellnessScreen() {
-  const { colors } = useTheme();
-  const { user } = useAuth();
-  const { addPoints, completeAchievement } = useGamification();
-  const { deviceType, padding } = useResponsive();
-  const [meditationTime, setMeditationTime] = useState(5);
-  const [isMeditating, setIsMeditating] = useState(false);
-  const [countdownValue, setCountdownValue] = useState(5 * 60);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [journalEntry, setJournalEntry] = useState('');
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
 
-  useEffect(() => {
-    analyticsService.trackScreen('wellness');
-  }, []);
-
-  const moodOptions = [
-    { id: 'great', label: 'Great', emoji: '😁' },
-    { id: 'good', label: 'Good', emoji: '🙂' },
-    { id: 'okay', label: 'Okay', emoji: '😐' },
-    { id: 'sad', label: 'Sad', emoji: '😔' },
-    { id: 'stressed', label: 'Stressed', emoji: '😫' },
+  const moodOptions: MoodOption[] = [
+    {
+      id: 'great',
+      emoji: '😊',
+      label: 'Great',
+      color: '#10B981',
+      description: 'Feeling amazing and energetic!'
+    },
+    {
+      id: 'good',
+      emoji: '🙂',
+      label: 'Good',
+      color: '#3B82F6',
+      description: 'Having a positive day'
+    },
+    {
+      id: 'okay',
+      emoji: '😐',
+      label: 'Okay',
+      color: '#F59E0B',
+      description: 'Feeling neutral or balanced'
+    },
+    {
+      id: 'sad',
+      emoji: '😔',
+      label: 'Sad',
+      color: '#8B5CF6',
+      description: 'Feeling down or melancholy'
+    },
+    {
+      id: 'stressed',
+      emoji: '😰',
+      label: 'Stressed',
+      color: '#EF4444',
+      description: 'Feeling overwhelmed or anxious'
+    }
   ];
 
-  const wellnessTools = [
+  const wellnessTools: WellnessTool[] = [
     {
-      id: '1',
+      id: 'journal',
       title: 'Journal',
       description: 'Record your thoughts and feelings',
       icon: BookOpen,
-      route: '/wellness/journal',
-      color: colors.success,
+      color: '#10B981',
+      route: '/wellness/journal'
     },
     {
-      id: '2',
+      id: 'meditation',
       title: 'Meditation',
       description: 'Guided sessions for stress relief',
       icon: Clock,
-      route: '/wellness/meditation',
-      color: colors.accent,
+      color: '#8B5CF6',
+      route: '/wellness/meditation'
     },
     {
-      id: '3',
+      id: 'mood-tracking',
       title: 'Mood Tracking',
       description: 'Monitor your emotional wellbeing',
-      icon: BarChart,
-      route: '/wellness/mood-tracking',
-      color: colors.secondary,
-    },
+      icon: BarChart3,
+      color: '#3B82F6',
+      route: '/wellness/mood-tracking'
+    }
   ];
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const handleMoodSelection = (moodId: string) => {
-    setSelectedMood(moodId);
-    analyticsService.trackEvent('mood_selected', { mood: moodId });
-    addPoints(5, 'Mood check-in');
-  };
-
-  const handleJournalSave = async () => {
-    if (!journalEntry.trim()) return;
-
-    analyticsService.trackEvent('journal_entry_saved', { 
-      entry_length: journalEntry.length,
-      mood: selectedMood 
-    });
+  useEffect(() => {
+    loadSavedMood();
     
-    addPoints(25, 'Journal entry saved');
+    // Animate screen entrance
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
+  const loadSavedMood = async () => {
+    try {
+      const today = new Date().toDateString();
+      const savedMood = await AsyncStorage.getItem(`mood_${today}`);
+      if (savedMood) {
+        setSelectedMood(savedMood as Mood);
+      }
+    } catch (error) {
+      console.error('Error loading saved mood:', error);
+    }
+  };
+
+  const handleMoodSelection = async (mood: Mood) => {
+    try {
+      setSelectedMood(mood);
+      
+      // Save to AsyncStorage with today's date
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem(`mood_${today}`, mood);
+      
+      // Save to mood history for tracking
+      const moodHistory = await AsyncStorage.getItem('mood_history');
+      const history = moodHistory ? JSON.parse(moodHistory) : [];
+      
+      const newEntry = {
+        mood,
+        date: new Date().toISOString(),
+        timestamp: Date.now()
+      };
+      
+      // Remove any existing entry for today and add new one
+      const filteredHistory = history.filter((entry: any) => 
+        new Date(entry.date).toDateString() !== today
+      );
+      
+      await AsyncStorage.setItem('mood_history', JSON.stringify([newEntry, ...filteredHistory]));
+      
+      // Show confirmation
+      setShowConfirmation(true);
+      setTimeout(() => setShowConfirmation(false), 3000);
+      
+      // TODO: In a real app, also save to Supabase
+      // await saveMoodToSupabase(mood);
+      
+    } catch (error) {
+      console.error('Error saving mood:', error);
+      Alert.alert('Error', 'Failed to save your mood. Please try again.');
+    }
+  };
+
+  const handleToolPress = (tool: WellnessTool) => {
+    // For now, we'll show an alert since the routes don't exist yet
+    // In a real implementation, you'd navigate to the actual screens
     
-    // Check for first journal achievement
-    setTimeout(() => completeAchievement('first_journal'), 100);
-
-    // Generate empathetic response based on mood and content
-    if (selectedMood && user?.isPremium) {
-      await generateEmpathicResponse();
-    }
-
-    Alert.alert('Journal Saved', 'Your thoughts have been recorded securely.');
-    setJournalEntry('');
-  };
-
-  const generateEmpathicResponse = async () => {
-    if (!selectedMood) return;
-
-    setIsPlayingAudio(true);
-    analyticsService.trackEvent('empathic_audio_generated', { mood: selectedMood });
-
-    try {
-      const affirmation = elevenLabsService.getAffirmationForMood(selectedMood);
-      await elevenLabsService.generateAndPlaySpeech(affirmation);
-      addPoints(10, 'Listened to AI affirmation');
-    } catch (error) {
-      console.error('Failed to generate empathic response:', error);
-    } finally {
-      setIsPlayingAudio(false);
-    }
-  };
-
-  const handleReadJournalAloud = async () => {
-    if (!journalEntry.trim()) {
-      Alert.alert('No Content', 'Please write something in your journal first.');
-      return;
-    }
-
-    if (!user?.isPremium) {
-      setShowPaywall(true);
-      analyticsService.trackEvent('wellness_paywall_shown', { feature: 'read_aloud' });
-      return;
-    }
-
-    setIsPlayingAudio(true);
-    analyticsService.trackEvent('journal_read_aloud', { entry_length: journalEntry.length });
-
-    try {
-      await elevenLabsService.generateAndPlaySpeech(journalEntry);
-    } catch (error) {
-      console.error('Failed to read journal aloud:', error);
-      Alert.alert('Error', 'Could not read your journal entry aloud. Please try again.');
-    } finally {
-      setIsPlayingAudio(false);
+    switch (tool.id) {
+      case 'journal':
+        Alert.alert(
+          'Journal',
+          'Opening your personal journal where you can write about your thoughts and feelings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', onPress: () => router.push('/wellness/journal' as any) }
+          ]
+        );
+        break;
+      case 'meditation':
+        Alert.alert(
+          'Meditation',
+          'Access guided meditation sessions and breathing exercises.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', onPress: () => router.push('/wellness/meditation' as any) }
+          ]
+        );
+        break;
+      case 'mood-tracking':
+        Alert.alert(
+          'Mood Tracking',
+          'View your mood history and emotional patterns over time.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', onPress: () => router.push('/wellness/mood-tracking' as any) }
+          ]
+        );
+        break;
     }
   };
 
-  const handleListenToAffirmation = async () => {
-    if (!user?.isPremium) {
-      setShowPaywall(true);
-      analyticsService.trackEvent('wellness_paywall_shown', { feature: 'affirmation' });
-      return;
-    }
-
-    const mood = selectedMood || 'default';
-    setIsPlayingAudio(true);
-    analyticsService.trackEvent('affirmation_played', { mood });
-
-    try {
-      const affirmation = elevenLabsService.getAffirmationForMood(mood);
-      await elevenLabsService.generateAndPlaySpeech(affirmation);
-      addPoints(15, 'Listened to daily affirmation');
-    } catch (error) {
-      console.error('Failed to play affirmation:', error);
-      Alert.alert('Error', 'Could not play affirmation. Please try again.');
-    } finally {
-      setIsPlayingAudio(false);
-    }
-  };
-
-  const renderMoodOption = (option: { id: string; label: string; emoji: string }) => (
-    <TouchableOpacity
-      key={option.id}
-      style={[
-        styles.moodOption, 
-        { 
-          borderColor: selectedMood === option.id ? colors.primary : colors.border,
-          backgroundColor: selectedMood === option.id ? colors.primaryLight : colors.surface,
-          width: deviceType === 'mobile' ? '18%' : 'auto',
-          minWidth: deviceType === 'mobile' ? undefined : 80,
-          paddingHorizontal: deviceType === 'mobile' ? 8 : 16,
-          paddingVertical: deviceType === 'mobile' ? 12 : 16,
-        }
-      ]}
-      onPress={() => handleMoodSelection(option.id)}
-    >
-      <Text style={[styles.moodEmoji, { fontSize: deviceType === 'mobile' ? 28 : 32 }]}>
-        {option.emoji}
-      </Text>
-      <Text style={[
-        styles.moodLabel, 
-        { 
-          color: colors.text,
-          fontSize: deviceType === 'mobile' ? 12 : 14,
-        }
-      ]}>
-        {option.label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderWellnessTool = (tool: typeof wellnessTools[0]) => (
-    <TouchableOpacity
-      key={tool.id}
-      style={[
-        styles.toolCard,
-        { 
-          backgroundColor: colors.surface, 
-          borderColor: colors.border,
-          padding: deviceType === 'mobile' ? 16 : 20,
-        }
-      ]}
-      onPress={() => {
-        analyticsService.trackUserAction('wellness_tool_accessed', 'wellness', {
-          tool: tool.title
-        });
-        console.log(`Navigate to ${tool.route}`);
-      }}
-    >
-      <View style={[
-        styles.toolIconContainer, 
-        { 
-          backgroundColor: tool.color + '20',
-          width: deviceType === 'mobile' ? 48 : 56,
-          height: deviceType === 'mobile' ? 48 : 56,
-          borderRadius: deviceType === 'mobile' ? 24 : 28,
-        }
-      ]}>
-        <tool.icon size={deviceType === 'mobile' ? 24 : 28} color={tool.color} />
-      </View>
-      <Text style={[
-        styles.toolTitle, 
-        { 
-          color: colors.text,
-          fontSize: deviceType === 'mobile' ? 16 : 18,
-        }
-      ]}>
-        {tool.title}
-      </Text>
-      <Text style={[
-        styles.toolDescription, 
-        { 
-          color: colors.textSecondary,
-          fontSize: deviceType === 'mobile' ? 13 : 14,
-        }
-      ]}>
-        {tool.description}
-      </Text>
-    </TouchableOpacity>
-  );
+  const selectedMoodData = selectedMood ? moodOptions.find(m => m.id === selectedMood) : null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <HomeButton />
-      <ScrollView 
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: deviceType === 'mobile' ? 80 : 100 }
-        ]}
+    <SafeAreaView style={styles.container}>
+      <Animated.ScrollView 
+        style={[styles.scrollView, { opacity: fadeAnim }]}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        <ResponsiveContainer>
-          <View style={[styles.section, { marginTop: deviceType === 'mobile' ? 70 : 80 }]}>
-            <Text style={[
-              styles.sectionTitle, 
-              { 
-                color: colors.text,
-                fontSize: deviceType === 'mobile' ? 18 : 22,
-              }
-            ]}>
-              How are you feeling?
-            </Text>
-            <View style={[
-              styles.moodContainer,
-              deviceType !== 'mobile' ? styles.moodContainerDesktop : null
-            ]}>
-              {moodOptions.map(renderMoodOption)}
-            </View>
-            
-            {selectedMood && (
-              <View style={styles.affirmationSection}>
-                <TouchableOpacity
-                  style={[
-                    styles.affirmationButton,
-                    { 
-                      backgroundColor: user?.isPremium ? colors.accent : colors.disabled,
-                      paddingHorizontal: deviceType === 'mobile' ? 20 : 24,
-                      paddingVertical: deviceType === 'mobile' ? 12 : 14,
-                    }
-                  ]}
-                  onPress={handleListenToAffirmation}
-                  disabled={isPlayingAudio}
-                >
-                  {!user?.isPremium && <Crown size={16} color="white" />}
-                  <Text style={[
-                    styles.affirmationButtonText, 
-                    { 
-                      marginLeft: !user?.isPremium ? 8 : 0,
-                      fontSize: deviceType === 'mobile' ? 14 : 16,
-                    }
-                  ]}>
-                    {isPlayingAudio ? 'Playing...' : 'Listen to Affirmation'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Wellness</Text>
+          <Text style={styles.subtitle}>How are you feeling today?</Text>
+        </View>
 
-          <View style={styles.section}>
-            <Text style={[
-              styles.sectionTitle, 
-              { 
-                color: colors.text,
-                fontSize: deviceType === 'mobile' ? 18 : 22,
-              }
-            ]}>
-              Wellness Tools
-            </Text>
-            <ResponsiveGrid minItemWidth={250} gap={deviceType === 'mobile' ? 12 : 16}>
-              {wellnessTools.map(renderWellnessTool)}
-            </ResponsiveGrid>
-          </View>
-
-          <View style={[styles.meditationCard, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}>
-            <View style={styles.meditationHeader}>
-              <Text style={[styles.meditationTitle, { color: colors.text }]}>Meditation Timer</Text>
-              <TouchableOpacity onPress={() => setSoundEnabled(!soundEnabled)}>
-                {soundEnabled ? (
-                  <Volume2 size={20} color={colors.accent} />
-                ) : (
-                  <VolumeX size={20} color={colors.textSecondary} />
-                )}
+        {/* Mood Selection */}
+        <Animated.View style={[styles.moodSection, { transform: [{ scale: scaleAnim }] }]}>
+          <View style={styles.moodGrid}>
+            {moodOptions.map((mood, index) => (
+              <TouchableOpacity
+                key={mood.id}
+                style={[
+                  styles.moodButton,
+                  selectedMood === mood.id && { 
+                    borderColor: mood.color,
+                    borderWidth: 3,
+                    backgroundColor: mood.color + '15'
+                  }
+                ]}
+                onPress={() => handleMoodSelection(mood.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                <Text style={[
+                  styles.moodLabel,
+                  selectedMood === mood.id && { color: mood.color, fontWeight: '600' }
+                ]}>
+                  {mood.label}
+                </Text>
               </TouchableOpacity>
-            </View>
-
-            {isMeditating ? (
-              <View style={styles.meditationTimerContainer}>
-                <Text style={[styles.countdownText, { color: colors.accent }]}>
-                  {formatTime(countdownValue)}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.meditationButton, { backgroundColor: colors.error }]}
-                  onPress={() => {
-                    setIsMeditating(false);
-                    analyticsService.trackEvent('meditation_stopped', { duration: meditationTime * 60 - countdownValue });
-                  }}
-                >
-                  <Text style={styles.meditationButtonText}>Stop</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.meditationSetupContainer}>
-                <Text style={[styles.meditationLabel, { color: colors.text }]}>
-                  Set meditation duration:
-                </Text>
-                <View style={styles.timePickerContainer}>
-                  {[5, 10, 15, 20].map(time => (
-                    <TouchableOpacity
-                      key={time}
-                      style={[
-                        styles.timeOption,
-                        { 
-                          backgroundColor: meditationTime === time ? colors.accent : 'transparent',
-                          borderColor: colors.accent,
-                        }
-                      ]}
-                      onPress={() => {
-                        setMeditationTime(time);
-                        setCountdownValue(time * 60);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.timeOptionText,
-                          { color: meditationTime === time ? 'white' : colors.accent }
-                        ]}
-                      >
-                        {time} min
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={[styles.meditationButton, { backgroundColor: colors.accent }]}
-                  onPress={() => {
-                    setIsMeditating(true);
-                    analyticsService.trackEvent('meditation_started', { duration: meditationTime });
-                    addPoints(20, 'Started meditation session');
-                  }}
-                >
-                  <Text style={styles.meditationButtonText}>Start Meditation</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            ))}
           </View>
 
-          <View style={[styles.journalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.journalHeader}>
-              <Text style={[styles.journalTitle, { color: colors.text }]}>Daily Journal</Text>
-              <View style={styles.journalActions}>
-                {user?.isPremium ? (
-                  <TouchableOpacity
-                    onPress={handleReadJournalAloud}
-                    disabled={isPlayingAudio || !journalEntry.trim()}
-                    style={[styles.journalActionButton, { opacity: (!journalEntry.trim() || isPlayingAudio) ? 0.5 : 1 }]}
-                  >
-                    <Volume2 size={16} color={colors.primary} />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => setShowPaywall(true)}
-                    style={styles.journalActionButton}
-                  >
-                    <Lock size={16} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                )}
-                <Pencil size={20} color={colors.success} />
-              </View>
-            </View>
-            
-            <TextInput
-              style={[styles.journalInput, { color: colors.text, borderColor: colors.border }]}
-              placeholder="Write your thoughts for today..."
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              numberOfLines={4}
-              value={journalEntry}
-              onChangeText={setJournalEntry}
-            />
-            
-            <TouchableOpacity 
-              style={[
-                styles.journalButton, 
-                { 
-                  backgroundColor: journalEntry.trim() ? colors.success : colors.disabled 
-                }
-              ]}
-              onPress={handleJournalSave}
-              disabled={!journalEntry.trim()}
-            >
-              <Text style={styles.journalButtonText}>Save Entry</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Affirmation</Text>
-            <View style={[styles.affirmationCard, { backgroundColor: colors.primaryLight }]}>
-              <Image 
-                source={{ uri: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg' }}
-                style={styles.affirmationImage}
-              />
-              <View style={styles.affirmationOverlay} />
-              <Text style={styles.affirmationText}>
-                "You are resilient and capable of overcoming any challenge that comes your way."
+          {/* Mood Confirmation */}
+          {showConfirmation && selectedMoodData && (
+            <Animated.View style={[
+              styles.confirmationCard,
+              { backgroundColor: selectedMoodData.color + '15', borderColor: selectedMoodData.color }
+            ]}>
+              <Sparkles size={20} color={selectedMoodData.color} />
+              <Text style={[styles.confirmationText, { color: selectedMoodData.color }]}>
+                Thanks for checking in! You selected "{selectedMoodData.label}"
               </Text>
-            </View>
-          </View>
-        </ResponsiveContainer>
-      </ScrollView>
+              <Text style={styles.confirmationSubtext}>
+                {selectedMoodData.description}
+              </Text>
+            </Animated.View>
+          )}
 
-      <PaywallScreen 
-        visible={showPaywall} 
-        onClose={() => setShowPaywall(false)} 
-      />
-      
-      <BoltBadge />
+          {/* Current Mood Display */}
+          {selectedMood && !showConfirmation && selectedMoodData && (
+            <View style={[
+              styles.currentMoodCard,
+              { backgroundColor: selectedMoodData.color + '10', borderColor: selectedMoodData.color + '30' }
+            ]}>
+              <Text style={styles.currentMoodEmoji}>{selectedMoodData.emoji}</Text>
+              <View style={styles.currentMoodInfo}>
+                <Text style={[styles.currentMoodLabel, { color: selectedMoodData.color }]}>
+                  Today you're feeling {selectedMoodData.label.toLowerCase()}
+                </Text>
+                <Text style={styles.currentMoodDescription}>
+                  {selectedMoodData.description}
+                </Text>
+              </View>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* Wellness Tools */}
+        <View style={styles.toolsSection}>
+          <Text style={styles.sectionTitle}>Wellness Tools</Text>
+          <Text style={styles.sectionSubtitle}>
+            Explore tools to support your mental wellbeing
+          </Text>
+
+          <View style={styles.toolsGrid}>
+            {wellnessTools.map((tool, index) => (
+              <TouchableOpacity
+                key={tool.id}
+                style={[styles.toolCard, { backgroundColor: tool.color + '10' }]}
+                onPress={() => handleToolPress(tool)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: tool.color + '20' }]}>
+                  <tool.icon size={28} color={tool.color} />
+                </View>
+                <Text style={styles.toolTitle}>{tool.title}</Text>
+                <Text style={styles.toolDescription}>{tool.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Motivational Quote */}
+        <View style={styles.quoteSection}>
+          <Heart size={24} color="#EF4444" />
+          <Text style={styles.quote}>
+            "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity."
+          </Text>
+          <Text style={styles.quoteAuthor}>— Anonymous</Text>
+        </View>
+
+        {/* Daily Tip */}
+        <View style={styles.tipSection}>
+          <Text style={styles.tipTitle}>💡 Daily Wellness Tip</Text>
+          <Text style={styles.tipText}>
+            Take 5 minutes today to practice deep breathing. Inhale for 4 counts, hold for 4, exhale for 6. This simple technique can help reduce stress and improve focus.
+          </Text>
+        </View>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -469,195 +340,187 @@ export default function WellnessScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  moodContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-    gap: 8,
-  },
-  moodContainerDesktop: {
-    justifyContent: 'center',
-    gap: 16,
-  },
-  moodOption: {
+  header: {
+    marginTop: 20,
+    marginBottom: 30,
     alignItems: 'center',
-    borderRadius: 12,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  moodSection: {
+    marginBottom: 40,
+  },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  moodButton: {
+    width: (width - 80) / 3,
+    aspectRatio: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
     borderWidth: 2,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
   },
   moodEmoji: {
-    marginBottom: 4,
+    fontSize: 32,
+    marginBottom: 8,
   },
   moodLabel: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#F8FAFC',
+    textAlign: 'center',
   },
-  affirmationSection: {
-    alignItems: 'center',
-  },
-  affirmationButton: {
+  confirmationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 24,
-  },
-  affirmationButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  toolCard: {
+    backgroundColor: '#10B981',
     borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
-    minHeight: 140,
-    justifyContent: 'center',
+    padding: 16,
+    marginTop: 20,
+    gap: 12,
   },
-  toolIconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  confirmationText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
   },
-  toolTitle: {
+  confirmationSubtext: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  currentMoodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 20,
+    gap: 16,
+  },
+  currentMoodEmoji: {
+    fontSize: 40,
+  },
+  currentMoodInfo: {
+    flex: 1,
+  },
+  currentMoodLabel: {
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  currentMoodDescription: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  toolsSection: {
+    marginBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    color: '#94A3B8',
+    marginBottom: 24,
+  },
+  toolsGrid: {
+    gap: 16,
+  },
+  toolCard: {
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    minHeight: 140,
+  },
+  toolIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  toolTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 8,
     textAlign: 'center',
   },
   toolDescription: {
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#94A3B8',
     textAlign: 'center',
+    lineHeight: 20,
   },
-  meditationCard: {
-    borderRadius: 12,
-    padding: 16,
+  quoteSection: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
+    borderColor: '#334155',
   },
-  meditationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  meditationTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  meditationTimerContainer: {
-    alignItems: 'center',
-  },
-  countdownText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  meditationSetupContainer: {
-    alignItems: 'center',
-  },
-  meditationLabel: {
+  quote: {
     fontSize: 16,
-    marginBottom: 12,
+    color: '#F8FAFC',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 24,
+    marginVertical: 16,
   },
-  timePickerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  timeOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginHorizontal: 4,
-    borderWidth: 1,
-  },
-  timeOptionText: {
+  quoteAuthor: {
+    fontSize: 14,
+    color: '#94A3B8',
     fontWeight: '500',
   },
-  meditationButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignItems: 'center',
-  },
-  meditationButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  journalCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+  tipSection: {
+    backgroundColor: '#3B82F6' + '15',
+    borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
+    borderColor: '#3B82F6' + '30',
   },
-  journalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  journalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  journalActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  journalActionButton: {
-    padding: 4,
-  },
-  journalInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 120,
-    textAlignVertical: 'top',
-    marginBottom: 16,
-  },
-  journalButton: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  journalButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  affirmationCard: {
-    height: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  affirmationImage: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  affirmationOverlay: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  affirmationText: {
-    color: 'white',
+  tipTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 28,
+    color: '#3B82F6',
+    marginBottom: 12,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#F8FAFC',
+    lineHeight: 22,
   },
 });
