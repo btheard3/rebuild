@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, Calendar, TrendingUp, BarChart3 } from 'lucide-react-native';
+import { ArrowLeft, Calendar, TrendingUp, ChartBar as BarChart3 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
