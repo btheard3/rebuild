@@ -9,7 +9,7 @@ import { tavusService } from '@/services/tavusService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
 import { Video, ResizeMode } from 'expo-av';
-import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, AlertTriangle, Volume2 } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, TriangleAlert as AlertTriangle, Volume2 } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
 
