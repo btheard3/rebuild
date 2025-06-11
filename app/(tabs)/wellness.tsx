@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { BookOpen, Clock, BarChart3, Heart, Sparkles } from 'lucide-react-native';
+import { BookOpen, Clock, ChartBar as BarChart3, Heart, Sparkles } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
