@@ -4,14 +4,36 @@ import { Audio } from 'expo-av';
 class ElevenLabsService {
   private apiKey: string;
   private baseUrl = 'https://api.elevenlabs.io/v1';
+  private cache: Map<string, string> = new Map();
+  private cacheExpiry: Map<string, number> = new Map();
 
   constructor() {
     this.apiKey = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY || '';
   }
 
-  async generateSpeech(text: string, voiceId: string = 'pNInz6obpgDQGcFmaJgB'): Promise<string | null> {
+  async generateSpeech(
+    text: string, 
+    voiceId: string = 'ThT5KcBeYPX3keUQqHPh', // Professional male announcer for emergency alerts
+    options: {
+      stability?: number;
+      similarity_boost?: number;
+      style?: number;
+      use_speaker_boost?: boolean;
+    } = {}
+  ): Promise<string | null> {
+    // Check cache first (24-hour expiry for emergency alerts)
+    const cacheKey = `${text}-${voiceId}`;
+    const cached = this.cache.get(cacheKey);
+    const expiry = this.cacheExpiry.get(cacheKey);
+    
+    if (cached && expiry && Date.now() < expiry) {
+      console.log('🎵 Using cached audio for emergency alert');
+      return cached;
+    }
+
     if (Platform.OS === 'web' || !this.apiKey) {
       // Mock audio URL for web or when API key is missing
+      console.log('🎵 Using mock audio for development');
       return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
     }
 
@@ -27,9 +49,13 @@ class ElevenLabsService {
           text,
           model_id: 'eleven_monolingual_v1',
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
+            stability: options.stability || 0.75, // Emergency alert optimized
+            similarity_boost: options.similarity_boost || 0.75, // Clear enunciation
+            style: options.style || 0.15, // Professional tone
+            use_speaker_boost: options.use_speaker_boost || true, // Enhanced clarity
           },
+          // Note: Speaking rate (0.9 for emergency alerts) is controlled by the model
+          // and cannot be directly set via voice_settings for eleven_monolingual_v1
         }),
       });
 
@@ -39,6 +65,11 @@ class ElevenLabsService {
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Cache for 24 hours (emergency alerts)
+      this.cache.set(cacheKey, audioUrl);
+      this.cacheExpiry.set(cacheKey, Date.now() + 24 * 60 * 60 * 1000);
+      
       return audioUrl;
     } catch (error) {
       console.error('Failed to generate speech:', error);
@@ -50,7 +81,7 @@ class ElevenLabsService {
     try {
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
-        { shouldPlay: true }
+        { shouldPlay: true, volume: 1.0 } // Full volume for emergency alerts
       );
       
       // Clean up sound after playing
@@ -71,6 +102,23 @@ class ElevenLabsService {
     }
   }
 
+  // Emergency alert specific method with optimized settings
+  async generateEmergencyAlert(alertText: string): Promise<string | null> {
+    // Ensure text is within 500 character limit for emergency alerts
+    const truncatedText = alertText.length > 500 ? alertText.substring(0, 497) + '...' : alertText;
+    
+    return this.generateSpeech(
+      truncatedText,
+      'ThT5KcBeYPX3keUQqHPh', // Professional male announcer
+      {
+        stability: 0.75,
+        similarity_boost: 0.75,
+        style: 0.15,
+        use_speaker_boost: true,
+      }
+    );
+  }
+
   // Predefined affirmations for different emotional states
   getAffirmationForMood(mood: string): string {
     const affirmations: Record<string, string> = {
@@ -84,6 +132,20 @@ class ElevenLabsService {
     };
 
     return affirmations[mood.toLowerCase()] || affirmations.default;
+  }
+
+  // Clear cache (useful for testing or memory management)
+  clearCache(): void {
+    this.cache.clear();
+    this.cacheExpiry.clear();
+  }
+
+  // Get cache statistics
+  getCacheStats(): { size: number; entries: string[] } {
+    return {
+      size: this.cache.size,
+      entries: Array.from(this.cache.keys())
+    };
   }
 }
 

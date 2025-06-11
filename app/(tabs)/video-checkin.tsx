@@ -6,9 +6,10 @@ import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { tavusService } from '@/services/tavusService';
+import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
 import { Video, ResizeMode } from 'expo-av';
-import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Crown, Lock, Calendar, MessageCircle, Sparkles, AlertTriangle, Volume2 } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import PaywallScreen from '@/components/PaywallScreen';
 
@@ -21,6 +22,7 @@ interface VideoCheckIn {
   script: string;
   mood?: string;
   progress?: string[];
+  isEmergencyAlert?: boolean;
 }
 
 export default function VideoCheckinScreen() {
@@ -35,6 +37,8 @@ export default function VideoCheckinScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [videoStatus, setVideoStatus] = useState<any>({});
   const [selectedMood, setSelectedMood] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [fallbackMode, setFallbackMode] = useState(false);
 
   const getPadding = getResponsiveValue(16, 24, 32);
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
@@ -53,7 +57,19 @@ export default function VideoCheckinScreen() {
   useEffect(() => {
     analyticsService.trackScreen('video_checkin');
     loadVideoHistory();
+    checkServiceHealth();
   }, []);
+
+  const checkServiceHealth = async () => {
+    try {
+      const tavusHealthy = await tavusService.healthCheck();
+      if (!tavusHealthy) {
+        console.warn('Tavus service health check failed');
+      }
+    } catch (error) {
+      console.warn('Service health check error:', error);
+    }
+  };
 
   const loadVideoHistory = async () => {
     // In a real app, this would load from storage or API
@@ -90,6 +106,8 @@ export default function VideoCheckinScreen() {
     }
 
     setIsGenerating(true);
+    setError(null);
+    setFallbackMode(false);
     analyticsService.trackEvent('video_checkin_generation_started', { mood: selectedMood });
 
     try {
@@ -138,19 +156,103 @@ export default function VideoCheckinScreen() {
           videoId: result.videoId,
           mood: selectedMood
         });
+      } else {
+        throw new Error('Video generation service returned null result');
       }
     } catch (error) {
       console.error('Failed to generate video:', error);
+      setError('Video generation failed. Showing fallback content.');
+      setFallbackMode(true);
+      
+      // Create fallback content
+      const fallbackCheckIn: VideoCheckIn = {
+        id: Date.now().toString(),
+        videoId: 'fallback_' + Date.now(),
+        status: 'failed',
+        createdAt: new Date(),
+        script: `Hello ${user.name?.split(' ')[0]}, I understand you're feeling ${selectedMood} today. While I can't create a video right now, I want you to know that your feelings are valid and you're making progress in your recovery journey.`,
+        mood: selectedMood,
+        progress: []
+      };
+      
+      setVideoCheckIns(prev => [fallbackCheckIn, ...prev]);
+      setCurrentVideo(fallbackCheckIn);
+      
       analyticsService.trackError('video_checkin_generation_failed', 'VideoCheckinScreen', {
         error: error.message,
         mood: selectedMood
       });
       
-      Alert.alert(
-        'Generation Failed',
-        'We couldn\'t generate your video check-in right now. Please try again later.',
-        [{ text: 'OK' }]
-      );
+      // Generate audio fallback
+      try {
+        await elevenLabsService.generateAndPlaySpeech(fallbackCheckIn.script);
+      } catch (audioError) {
+        console.error('Audio fallback also failed:', audioError);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateEmergencyAlert = async (alertText: string) => {
+    if (!user?.isPremium) {
+      setShowPaywall(true);
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      // Generate emergency alert script
+      const script = tavusService.generateEmergencyAlertScript({
+        alertText,
+        severity: 'high',
+        location: 'Your Area',
+        timestamp: new Date(),
+        instructions: [
+          'Stay indoors and avoid unnecessary travel',
+          'Monitor official emergency channels',
+          'Keep emergency supplies ready'
+        ]
+      });
+
+      // Generate both video and audio for emergency alerts
+      const [videoResult, audioUrl] = await Promise.all([
+        tavusService.generateVideo(script, user.id),
+        elevenLabsService.generateEmergencyAlert(script)
+      ]);
+
+      if (videoResult || audioUrl) {
+        const emergencyCheckIn: VideoCheckIn = {
+          id: Date.now().toString(),
+          videoId: videoResult?.videoId || 'emergency_audio_' + Date.now(),
+          status: videoResult ? 'generating' : 'completed',
+          createdAt: new Date(),
+          script,
+          isEmergencyAlert: true
+        };
+
+        setVideoCheckIns(prev => [emergencyCheckIn, ...prev]);
+        setCurrentVideo(emergencyCheckIn);
+
+        // Play audio immediately for emergency alerts
+        if (audioUrl) {
+          await elevenLabsService.playAudio(audioUrl);
+        }
+
+        if (videoResult) {
+          pollVideoStatus(videoResult.videoId, emergencyCheckIn.id);
+        }
+
+        analyticsService.trackEvent('emergency_alert_generated', {
+          videoId: videoResult?.videoId,
+          hasAudio: !!audioUrl
+        });
+      }
+    } catch (error) {
+      console.error('Emergency alert generation failed:', error);
+      setError('Emergency alert generation failed');
     } finally {
       setIsGenerating(false);
     }
@@ -162,29 +264,43 @@ export default function VideoCheckinScreen() {
 
     const poll = async () => {
       attempts++;
-      const status = await tavusService.getVideoStatus(videoId);
       
-      if (status) {
-        setVideoCheckIns(prev => prev.map(checkIn => 
-          checkIn.id === checkInId 
-            ? { ...checkIn, status: status.status as any, videoUrl: status.videoUrl }
-            : checkIn
-        ));
+      try {
+        const status = await tavusService.getVideoStatus(videoId);
+        
+        if (status) {
+          setVideoCheckIns(prev => prev.map(checkIn => 
+            checkIn.id === checkInId 
+              ? { ...checkIn, status: status.status as any, videoUrl: status.videoUrl }
+              : checkIn
+          ));
 
-        if (currentVideo?.id === checkInId) {
-          setCurrentVideo(prev => prev ? { ...prev, status: status.status as any, videoUrl: status.videoUrl } : null);
+          if (currentVideo?.id === checkInId) {
+            setCurrentVideo(prev => prev ? { ...prev, status: status.status as any, videoUrl: status.videoUrl } : null);
+          }
+          
+          if (status.status === 'completed' && status.videoUrl) {
+            analyticsService.trackEvent('video_checkin_ready', { videoId });
+            return;
+          }
+          
+          if (status.status === 'failed') {
+            setError('Video generation failed. Please try again.');
+            setFallbackMode(true);
+            analyticsService.trackError('video_checkin_generation_failed', 'VideoCheckinScreen', {
+              videoId,
+              status: status.status
+            });
+            return;
+          }
+        } else {
+          throw new Error('Failed to get video status');
         }
-        
-        if (status.status === 'completed' && status.videoUrl) {
-          analyticsService.trackEvent('video_checkin_ready', { videoId });
-          return;
-        }
-        
-        if (status.status === 'failed') {
-          analyticsService.trackError('video_checkin_generation_failed', 'VideoCheckinScreen', {
-            videoId,
-            status: status.status
-          });
+      } catch (error) {
+        console.error('Video status polling error:', error);
+        if (attempts >= maxAttempts) {
+          setError('Video generation timed out. Please try again.');
+          setFallbackMode(true);
           return;
         }
       }
@@ -216,6 +332,8 @@ export default function VideoCheckinScreen() {
         { text: 'Generate', onPress: () => {
           setSelectedMood('');
           setCurrentVideo(null);
+          setError(null);
+          setFallbackMode(false);
         }}
       ]
     );
@@ -223,6 +341,8 @@ export default function VideoCheckinScreen() {
 
   const selectVideoCheckIn = (checkIn: VideoCheckIn) => {
     setCurrentVideo(checkIn);
+    setError(null);
+    setFallbackMode(checkIn.status === 'failed');
     analyticsService.trackEvent('video_checkin_selected', { 
       videoId: checkIn.videoId,
       age: Date.now() - checkIn.createdAt.getTime()
@@ -258,6 +378,36 @@ export default function VideoCheckinScreen() {
     </View>
   );
 
+  const renderFallbackContent = () => (
+    <View style={[styles.fallbackContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.fallbackIcon, { backgroundColor: colors.warning + '20' }]}>
+        <AlertTriangle size={32} color={colors.warning} />
+      </View>
+      <Text style={[styles.fallbackTitle, { color: colors.text }]}>
+        Video Unavailable
+      </Text>
+      <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
+        {currentVideo?.script || 'We encountered an issue generating your video, but your message is still here for you.'}
+      </Text>
+      
+      <TouchableOpacity
+        style={[styles.audioButton, { backgroundColor: colors.primary }]}
+        onPress={async () => {
+          if (currentVideo?.script) {
+            try {
+              await elevenLabsService.generateAndPlaySpeech(currentVideo.script);
+            } catch (error) {
+              console.error('Audio playback failed:', error);
+            }
+          }
+        }}
+      >
+        <Volume2 size={20} color="white" />
+        <Text style={styles.audioButtonText}>Listen to Message</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderVideoPlayer = () => {
     if (!currentVideo?.videoUrl) return null;
 
@@ -284,6 +434,14 @@ export default function VideoCheckinScreen() {
                 </Text>
               </View>
             )}
+            {currentVideo.isEmergencyAlert && (
+              <View style={[styles.emergencyBadge, { backgroundColor: colors.error + '20' }]}>
+                <AlertTriangle size={12} color={colors.error} />
+                <Text style={[styles.emergencyBadgeText, { color: colors.error }]}>
+                  Emergency Alert
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -307,6 +465,12 @@ export default function VideoCheckinScreen() {
           <Text style={[styles.statusText, { color: colors.primary }]}>
             Status: {currentVideo.status}
           </Text>
+        </View>
+      )}
+
+      {error && (
+        <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         </View>
       )}
     </View>
@@ -342,12 +506,22 @@ export default function VideoCheckinScreen() {
                   {moodOptions.find(m => m.id === checkIn.mood)?.emoji} {checkIn.mood}
                 </Text>
               )}
+              {checkIn.isEmergencyAlert && (
+                <View style={[styles.emergencyIndicator, { backgroundColor: colors.error + '20' }]}>
+                  <AlertTriangle size={12} color={colors.error} />
+                  <Text style={[styles.emergencyIndicatorText, { color: colors.error }]}>
+                    Emergency
+                  </Text>
+                </View>
+              )}
               <View style={[
                 styles.statusIndicator,
-                { backgroundColor: checkIn.status === 'completed' ? colors.success : colors.warning }
+                { backgroundColor: checkIn.status === 'completed' ? colors.success : 
+                                 checkIn.status === 'failed' ? colors.error : colors.warning }
               ]}>
                 <Text style={styles.statusIndicatorText}>
-                  {checkIn.status === 'completed' ? 'Ready' : 'Processing'}
+                  {checkIn.status === 'completed' ? 'Ready' : 
+                   checkIn.status === 'failed' ? 'Failed' : 'Processing'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -377,6 +551,7 @@ export default function VideoCheckinScreen() {
         <Text style={[styles.featureItem, { color: colors.text }]}>• Adapts to your current emotional state</Text>
         <Text style={[styles.featureItem, { color: colors.text }]}>• Celebrates your achievements and milestones</Text>
         <Text style={[styles.featureItem, { color: colors.text }]}>• Provides encouragement during difficult times</Text>
+        <Text style={[styles.featureItem, { color: colors.text }]}>• Emergency alert system with audio fallback</Text>
       </View>
 
       {!user?.isPremium && (
@@ -402,7 +577,7 @@ export default function VideoCheckinScreen() {
 
         {isGenerating ? (
           renderGeneratingState()
-        ) : currentVideo?.videoUrl ? (
+        ) : currentVideo?.videoUrl && !fallbackMode ? (
           <View style={styles.videoSection}>
             {renderVideoPlayer()}
             
@@ -429,6 +604,24 @@ export default function VideoCheckinScreen() {
 
             {renderVideoHistory()}
           </View>
+        ) : currentVideo && fallbackMode ? (
+          <View style={styles.videoSection}>
+            {renderFallbackContent()}
+            
+            <View style={styles.videoActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={handleRegenerate}
+              >
+                <RotateCcw size={20} color={colors.primary} />
+                <Text style={[styles.actionButtonText, { color: colors.primary }]}>
+                  Try Again
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {renderVideoHistory()}
+          </View>
         ) : (
           <View>
             {renderEmptyState()}
@@ -448,6 +641,17 @@ export default function VideoCheckinScreen() {
                   <Sparkles size={20} color="white" />
                   <Text style={[styles.generateButtonText, { color: 'white' }]}>
                     Generate My Check-in
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Emergency Alert Test Button (for development) */}
+                <TouchableOpacity
+                  style={[styles.emergencyButton, { backgroundColor: colors.error }]}
+                  onPress={() => generateEmergencyAlert('This is a test emergency alert. Please remain calm and follow safety protocols.')}
+                >
+                  <AlertTriangle size={20} color="white" />
+                  <Text style={[styles.generateButtonText, { color: 'white' }]}>
+                    Test Emergency Alert
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -551,6 +755,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   videoDate: {
     fontSize: 14,
@@ -570,6 +776,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  emergencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  emergencyBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   videoActions: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -585,6 +803,48 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fallbackContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 32,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  fallbackIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  fallbackTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  fallbackText: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  audioButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  audioButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -621,10 +881,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    marginBottom: 12,
   },
   statusText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   emptyContainer: {
     justifyContent: 'center',
@@ -691,6 +962,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderRadius: 12,
+    marginBottom: 12,
+  },
+  emergencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
     marginBottom: 20,
   },
   generateButtonText: {
@@ -738,6 +1018,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  emergencyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 8,
+    gap: 4,
+  },
+  emergencyIndicatorText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   statusIndicator: {
     paddingHorizontal: 6,
