@@ -108,19 +108,18 @@ export default function VideoCheckinScreen() {
     });
 
     try {
-      const response = await tavusService.generateVideo(script, user?.id);
-      const url = response?.videoUrl;
+      const result = await tavusService.generateVideo(script, user?.id);
 
-      if (!url) throw new Error('No video URL returned');
+      if (!result.videoUrl) throw new Error('No video URL returned');
 
-      setVideoUrl(url);
+      setVideoUrl(result.videoUrl);
       setStep('video');
 
-      // Save video log
+      // Save video log to Supabase
       if (user) {
         await supabaseService.saveVideoLog({
           userId: user.id,
-          videoUrl: url,
+          videoUrl: result.videoUrl,
           script,
           mood: selectedMood || undefined,
           journalEntry,
@@ -129,7 +128,7 @@ export default function VideoCheckinScreen() {
 
       analyticsService.trackEvent('ai_video_generated', {
         mood: selectedMood,
-        video_url: url,
+        video_url: result.videoUrl,
       });
     } catch (error) {
       console.error('Video generation failed:', error);
