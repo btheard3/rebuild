@@ -12,7 +12,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
-import { Play, Pause, RotateCcw, Sparkles, Heart, Video as VideoIcon } from 'lucide-react-native';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Sparkles,
+  Heart,
+  Video as VideoIcon,
+} from 'lucide-react-native';
 import { tavusService } from '@/services/tavusService';
 import { openaiService } from '@/services/openaiService';
 import { supabaseService } from '@/services/supabaseService';
@@ -27,7 +34,7 @@ export default function VideoCheckinScreen() {
   const videoRef = useRef<Video>(null);
   const { user } = useAuth();
   const { colors } = useTheme();
-  
+
   const [journalEntry, setJournalEntry] = useState('');
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
   const [script, setScript] = useState('');
@@ -36,45 +43,52 @@ export default function VideoCheckinScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [step, setStep] = useState<'input' | 'script' | 'video'>('input');
 
-  const moods: { id: MoodType; emoji: string; label: string; color: string }[] = [
-    { id: 'great', emoji: '😊', label: 'Great', color: '#10B981' },
-    { id: 'good', emoji: '🙂', label: 'Good', color: '#3B82F6' },
-    { id: 'okay', emoji: '😐', label: 'Okay', color: '#F59E0B' },
-    { id: 'sad', emoji: '😔', label: 'Sad', color: '#8B5CF6' },
-    { id: 'stressed', emoji: '😰', label: 'Stressed', color: '#EF4444' },
-    { id: 'anxious', emoji: '😟', label: 'Anxious', color: '#F97316' },
-  ];
+  const moods: { id: MoodType; emoji: string; label: string; color: string }[] =
+    [
+      { id: 'great', emoji: '😊', label: 'Great', color: '#10B981' },
+      { id: 'good', emoji: '🙂', label: 'Good', color: '#3B82F6' },
+      { id: 'okay', emoji: '😐', label: 'Okay', color: '#F59E0B' },
+      { id: 'sad', emoji: '😔', label: 'Sad', color: '#8B5CF6' },
+      { id: 'stressed', emoji: '😰', label: 'Stressed', color: '#EF4444' },
+      { id: 'anxious', emoji: '😟', label: 'Anxious', color: '#F97316' },
+    ];
 
   const generateScript = async () => {
     if (!journalEntry.trim()) {
-      Alert.alert('Please enter your thoughts', 'Share what\'s on your mind to generate a personalized video.');
+      Alert.alert(
+        'Please enter your thoughts',
+        "Share what's on your mind to generate a personalized video."
+      );
       return;
     }
 
     setIsGenerating(true);
     analyticsService.trackEvent('ai_script_generation_started', {
       mood: selectedMood,
-      entry_length: journalEntry.length
+      entry_length: journalEntry.length,
     });
 
     try {
-      const generatedScript = await openaiService.generateScript(journalEntry, selectedMood || undefined);
+      const generatedScript = await openaiService.generateScript(
+        journalEntry,
+        selectedMood || undefined
+      );
       setScript(generatedScript);
       setStep('script');
-      
+
       // Save wellness entry
       if (user) {
         await supabaseService.saveWellnessEntry({
           userId: user.id,
           entryType: 'journal',
           mood: selectedMood || undefined,
-          content: journalEntry
+          content: journalEntry,
         });
       }
 
       analyticsService.trackEvent('ai_script_generated', {
         mood: selectedMood,
-        script_length: generatedScript.length
+        script_length: generatedScript.length,
       });
     } catch (error) {
       console.error('Script generation failed:', error);
@@ -90,16 +104,18 @@ export default function VideoCheckinScreen() {
     setIsGenerating(true);
     analyticsService.trackEvent('ai_video_generation_started', {
       mood: selectedMood,
-      script_length: script.length
+      script_length: script.length,
     });
 
     try {
-      const url = await tavusService.generateVideo(script, user?.id);
+      const response = await tavusService.generateVideo(script, user?.id);
+      const url = response?.videoUrl;
+
       if (!url) throw new Error('No video URL returned');
-      
+
       setVideoUrl(url);
       setStep('video');
-      
+
       // Save video log
       if (user) {
         await supabaseService.saveVideoLog({
@@ -107,13 +123,13 @@ export default function VideoCheckinScreen() {
           videoUrl: url,
           script,
           mood: selectedMood || undefined,
-          journalEntry
+          journalEntry,
         });
       }
 
       analyticsService.trackEvent('ai_video_generated', {
         mood: selectedMood,
-        video_url: url
+        video_url: url,
       });
     } catch (error) {
       console.error('Video generation failed:', error);
@@ -150,7 +166,9 @@ export default function VideoCheckinScreen() {
 
   const renderMoodSelector = () => (
     <View style={styles.moodSection}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>How are you feeling today?</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        How are you feeling today?
+      </Text>
       <View style={styles.moodGrid}>
         {moods.map((mood) => (
           <TouchableOpacity
@@ -158,17 +176,21 @@ export default function VideoCheckinScreen() {
             style={[
               styles.moodButton,
               {
-                backgroundColor: selectedMood === mood.id ? mood.color + '20' : colors.surface,
-                borderColor: selectedMood === mood.id ? mood.color : colors.border,
-              }
+                backgroundColor:
+                  selectedMood === mood.id ? mood.color + '20' : colors.surface,
+                borderColor:
+                  selectedMood === mood.id ? mood.color : colors.border,
+              },
             ]}
             onPress={() => setSelectedMood(mood.id)}
           >
             <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-            <Text style={[
-              styles.moodLabel,
-              { color: selectedMood === mood.id ? mood.color : colors.text }
-            ]}>
+            <Text
+              style={[
+                styles.moodLabel,
+                { color: selectedMood === mood.id ? mood.color : colors.text },
+              ]}
+            >
               {mood.label}
             </Text>
           </TouchableOpacity>
@@ -181,7 +203,9 @@ export default function VideoCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <Sparkles size={32} color={colors.primary} />
-        <Text style={[styles.title, { color: colors.text }]}>AI Video Check-in</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          AI Video Check-in
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Share your thoughts and get a personalized video message
         </Text>
@@ -190,13 +214,18 @@ export default function VideoCheckinScreen() {
       {renderMoodSelector()}
 
       <View style={styles.inputSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>What's on your mind?</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          What's on your mind?
+        </Text>
         <TextInput
-          style={[styles.textInput, { 
-            backgroundColor: colors.surface, 
-            color: colors.text,
-            borderColor: colors.border
-          }]}
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: colors.surface,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+          ]}
           placeholder="Share your thoughts, feelings, or what happened today..."
           placeholderTextColor={colors.textSecondary}
           multiline
@@ -210,10 +239,12 @@ export default function VideoCheckinScreen() {
       <TouchableOpacity
         style={[
           styles.primaryButton,
-          { 
-            backgroundColor: journalEntry.trim() ? colors.primary : colors.disabled,
-            opacity: isGenerating ? 0.7 : 1
-          }
+          {
+            backgroundColor: journalEntry.trim()
+              ? colors.primary
+              : colors.disabled,
+            opacity: isGenerating ? 0.7 : 1,
+          },
         ]}
         onPress={generateScript}
         disabled={!journalEntry.trim() || isGenerating}
@@ -234,14 +265,23 @@ export default function VideoCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <Heart size={32} color={colors.success} />
-        <Text style={[styles.title, { color: colors.text }]}>Your Personalized Script</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Your Personalized Script
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           AI-generated based on your thoughts and mood
         </Text>
       </View>
 
-      <View style={[styles.scriptContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.scriptText, { color: colors.text }]}>{script}</Text>
+      <View
+        style={[
+          styles.scriptContainer,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.scriptText, { color: colors.text }]}>
+          {script}
+        </Text>
       </View>
 
       <View style={styles.buttonRow}>
@@ -249,17 +289,19 @@ export default function VideoCheckinScreen() {
           style={[styles.secondaryButton, { borderColor: colors.border }]}
           onPress={() => setStep('input')}
         >
-          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Edit Input</Text>
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+            Edit Input
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            { 
+            {
               backgroundColor: colors.primary,
               opacity: isGenerating ? 0.7 : 1,
-              flex: 1
-            }
+              flex: 1,
+            },
           ]}
           onPress={generateVideo}
           disabled={isGenerating}
@@ -281,7 +323,9 @@ export default function VideoCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <VideoIcon size={32} color={colors.accent} />
-        <Text style={[styles.title, { color: colors.text }]}>Your AI Video</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Your AI Video
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Personalized message just for you
         </Text>
@@ -305,7 +349,10 @@ export default function VideoCheckinScreen() {
           />
           <View style={styles.videoControls}>
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.controlButton,
+                { backgroundColor: colors.primary },
+              ]}
               onPress={handlePlayPause}
             >
               {isPlaying ? (
@@ -315,7 +362,10 @@ export default function VideoCheckinScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.controlButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
               onPress={() => videoRef.current?.replayAsync()}
             >
               <RotateCcw size={24} color={colors.text} />
@@ -328,14 +378,18 @@ export default function VideoCheckinScreen() {
         style={[styles.secondaryButton, { borderColor: colors.border }]}
         onPress={resetFlow}
       >
-        <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Create Another Video</Text>
+        <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+          Create Another Video
+        </Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

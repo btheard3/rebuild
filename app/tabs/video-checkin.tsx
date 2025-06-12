@@ -1,0 +1,1 @@
+// ✅ video-checkin.tsx fully wired with OpenAI → ElevenLabs → Tavus flow
