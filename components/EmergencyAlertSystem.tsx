@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { tavusService } from '@/services/tavusService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { analyticsService } from '@/services/analyticsService';
-import { TriangleAlert as AlertTriangle, Volume2, Video, X, Send } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, Volume2, X, Send } from 'lucide-react-native';
 
 interface EmergencyAlertSystemProps {
   visible: boolean;
@@ -26,7 +25,6 @@ export default function EmergencyAlertSystem({
   const [instructions, setInstructions] = useState<string[]>(['']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
-  const [generatedVideo, setGeneratedVideo] = useState<any>(null);
 
   const severityOptions = [
     { id: 'low', label: 'Low', color: colors.success, description: 'Information update' },
@@ -43,7 +41,6 @@ export default function EmergencyAlertSystem({
       setLocation('');
       setInstructions(['']);
       setGeneratedAudio(null);
-      setGeneratedVideo(null);
     }
   }, [visible]);
 
@@ -61,6 +58,35 @@ export default function EmergencyAlertSystem({
     if (instructions.length > 1) {
       setInstructions(instructions.filter((_, i) => i !== index));
     }
+  };
+
+  const generateEmergencyAlertScript = (data: {
+    alertText: string;
+    severity: string;
+    location?: string;
+    timestamp: Date;
+    instructions: string[];
+  }): string => {
+    const { alertText, severity, location, timestamp, instructions } = data;
+    
+    let script = `Emergency Alert - ${severity.toUpperCase()} Priority. `;
+    
+    if (location) {
+      script += `This alert affects ${location}. `;
+    }
+    
+    script += `${alertText} `;
+    
+    if (instructions.length > 0) {
+      script += `Please follow these instructions: `;
+      instructions.forEach((instruction, index) => {
+        script += `${index + 1}. ${instruction}. `;
+      });
+    }
+    
+    script += `This alert was issued at ${timestamp.toLocaleTimeString()}. Stay safe and follow official guidance.`;
+    
+    return script;
   };
 
   const generateAlert = async () => {
@@ -84,7 +110,7 @@ export default function EmergencyAlertSystem({
 
     try {
       // Generate emergency alert script
-      const script = tavusService.generateEmergencyAlertScript({
+      const script = generateEmergencyAlertScript({
         alertText,
         severity,
         location: location || undefined,
@@ -92,14 +118,10 @@ export default function EmergencyAlertSystem({
         instructions: instructions.filter(i => i.trim())
       });
 
-      // Generate both audio and video simultaneously
-      const [audioUrl, videoResult] = await Promise.all([
-        elevenLabsService.generateEmergencyAlert(script),
-        user?.isPremium ? tavusService.generateVideo(script, user.id) : Promise.resolve(null)
-      ]);
+      // Generate audio for emergency alert
+      const audioUrl = await elevenLabsService.generateEmergencyAlert(script);
 
       setGeneratedAudio(audioUrl);
-      setGeneratedVideo(videoResult);
 
       // Play audio immediately for emergency alerts
       if (audioUrl) {
@@ -114,7 +136,6 @@ export default function EmergencyAlertSystem({
         instructions: instructions.filter(i => i.trim()),
         script,
         audioUrl,
-        videoResult,
         timestamp: new Date(),
       };
 
@@ -123,13 +144,12 @@ export default function EmergencyAlertSystem({
       analyticsService.trackEvent('emergency_alert_generated', {
         severity,
         hasAudio: !!audioUrl,
-        hasVideo: !!videoResult,
         textLength: alertText.length
       });
 
       Alert.alert(
         'Alert Generated',
-        'Emergency alert has been generated and audio is playing. Video generation may take a few minutes.',
+        'Emergency alert has been generated and audio is playing.',
         [{ text: 'OK' }]
       );
 
@@ -180,7 +200,7 @@ export default function EmergencyAlertSystem({
           <View style={[styles.warningBox, { backgroundColor: colors.error + '20', borderColor: colors.error }]}>
             <AlertTriangle size={16} color={colors.error} />
             <Text style={[styles.warningText, { color: colors.error }]}>
-              This system generates professional emergency alerts with audio and video components.
+              This system generates professional emergency alerts with audio components.
             </Text>
           </View>
 
@@ -299,11 +319,6 @@ export default function EmergencyAlertSystem({
                 <Volume2 size={20} color="white" />
                 <Text style={styles.playButtonText}>Play Audio Alert</Text>
               </TouchableOpacity>
-              {generatedVideo && (
-                <Text style={[styles.videoStatus, { color: colors.textSecondary }]}>
-                  Video: {generatedVideo.status}
-                </Text>
-              )}
             </View>
           )}
 
@@ -467,10 +482,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
-  },
-  videoStatus: {
-    fontSize: 12,
-    marginTop: 8,
   },
   generateButton: {
     flexDirection: 'row',

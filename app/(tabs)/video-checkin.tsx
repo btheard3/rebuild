@@ -1,4 +1,3 @@
-// Fully functional and type-safe voice-checkin.tsx with ElevenLabs integration + TypeScript fixes
 import React, { useState, useRef } from 'react';
 import {
   View,
