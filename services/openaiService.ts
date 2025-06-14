@@ -20,7 +20,7 @@ export const openaiService = {
       }
 
       const moodContext = mood ? ` The person is feeling ${mood}.` : '';
-      const prompt = `Convert the following journal entry into a warm, supportive 30-second video check-in script for someone going through disaster recovery.${moodContext} Make it encouraging and personalized:\n\n"${journalEntry}"\n\nScript:`;
+      const prompt = `Convert the following journal entry into a warm, supportive 30-second voice message script for someone going through disaster recovery.${moodContext} Make it encouraging and personalized:\n\n"${journalEntry}"\n\nScript:`;
 
       const response = await fetch(
         'https://api.openai.com/v1/chat/completions',
@@ -54,6 +54,72 @@ export const openaiService = {
     }
   },
 
+  async generateRecoveryRecommendations(planData: any): Promise<string[]> {
+    try {
+      const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+
+      if (!apiKey || apiKey.includes('placeholder')) {
+        console.log('🤖 Simulating OpenAI recovery recommendations');
+        
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        
+        return this.generateMockRecommendations(planData);
+      }
+
+      const prompt = `Generate 5-7 specific, actionable recovery recommendations for someone affected by a ${planData.disasterType}. 
+
+Context:
+- Disaster Type: ${planData.disasterType}
+- Family Size: ${planData.personalInfo?.familySize || 1}
+- Has Insurance: ${planData.insurance?.hasInsurance ? 'Yes' : 'No'}
+- Insurance Provider: ${planData.insurance?.provider || 'None'}
+- Immediate Needs: ${Object.entries(planData.immediateNeeds || {})
+  .filter(([key, value]) => value === true)
+  .map(([key]) => key)
+  .join(', ') || 'None specified'}
+
+Provide practical, prioritized recommendations that are specific to their situation. Each recommendation should be actionable and include specific next steps. Format as a JSON array of strings.`;
+
+      const response = await fetch(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 500,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      
+      try {
+        return JSON.parse(content);
+      } catch {
+        // If JSON parsing fails, split by lines and clean up
+        return content.split('\n')
+          .filter((line: string) => line.trim().length > 0)
+          .map((line: string) => line.replace(/^[-•*]\s*/, '').trim())
+          .slice(0, 7);
+      }
+    } catch (error) {
+      console.error('OpenAI recommendations error:', error);
+      return this.generateMockRecommendations(planData);
+    }
+  },
+
   generateMockScriptByMood(mood: string, journalEntry: string): string {
     const scripts = {
       great: `Hi! I can see you're feeling really positive today, and that's wonderful to see. Your resilience is truly inspiring. Based on what you've shared, it sounds like you're making real progress in your recovery journey. Keep celebrating these victories, both big and small. Your positive energy is not only helping you heal, but it's also a beacon of hope for others who might be struggling. Keep up the amazing work!`,
@@ -72,5 +138,78 @@ export const openaiService = {
     };
 
     return scripts[mood as keyof typeof scripts] || scripts.default;
+  },
+
+  generateMockRecommendations(planData: any): string[] {
+    const baseRecommendations = [
+      'Contact FEMA at 1-800-621-3362 to apply for Individual Assistance within 60 days of the disaster declaration',
+      'Document all damage with photos and videos before beginning any cleanup for insurance and FEMA claims',
+      'Keep detailed records of all disaster-related expenses, including receipts for temporary lodging, food, and supplies',
+    ];
+
+    const disasterSpecific: Record<string, string[]> = {
+      hurricane: [
+        'Apply for SBA disaster loans for property damage and economic injury at disasterloanassistance.sba.gov',
+        'Contact your insurance company immediately to file claims for wind and water damage',
+        'Register with local emergency management for updates on utility restoration and debris removal',
+      ],
+      flood: [
+        'Contact the National Flood Insurance Program if you have flood insurance coverage',
+        'Have your home professionally inspected for mold and structural damage before re-entering',
+        'Apply for SBA disaster loans specifically for flood damage repair and replacement',
+      ],
+      fire: [
+        'Contact your homeowner\'s insurance immediately as fire damage claims are time-sensitive',
+        'Register with local authorities for debris removal and hazardous material cleanup services',
+        'Apply for temporary housing assistance through FEMA while your home is being rebuilt',
+      ],
+      earthquake: [
+        'Have your home inspected by a structural engineer before re-occupying',
+        'Contact your earthquake insurance provider if you have coverage',
+        'Apply for SBA disaster loans for earthquake-specific structural repairs',
+      ],
+      tornado: [
+        'Contact your homeowner\'s insurance for wind damage claims',
+        'Register for debris removal services with local emergency management',
+        'Apply for FEMA assistance for temporary housing and home repairs',
+      ],
+    };
+
+    const needsSpecific: Record<string, string> = {
+      shelter: 'Contact the Red Cross at 1-800-733-2767 for immediate emergency shelter assistance',
+      food: 'Locate nearby food banks and emergency food distribution centers through 211',
+      medical: 'Find mobile medical clinics and disaster health services in your area',
+      utilities: 'Contact utility companies to report outages and get restoration timelines',
+      transportation: 'Apply for disaster-related transportation assistance through local social services',
+    };
+
+    const insuranceRecommendations = planData.insurance?.hasInsurance
+      ? [
+          `Contact ${planData.insurance.provider || 'your insurance company'} immediately to file your claim`,
+          'Request an adjuster inspection as soon as possible to assess damage',
+          'Keep detailed records of all communications with your insurance company',
+        ]
+      : [
+          'Apply for FEMA Individual Assistance as your primary source of disaster aid',
+          'Look into local disaster relief programs and community assistance funds',
+          'Consider applying for SBA disaster loans for low-interest recovery funding',
+        ];
+
+    const selectedRecommendations = [
+      ...baseRecommendations,
+      ...(disasterSpecific[planData.disasterType] || []),
+      ...insuranceRecommendations.slice(0, 2),
+    ];
+
+    // Add needs-specific recommendations
+    if (planData.immediateNeeds) {
+      Object.entries(planData.immediateNeeds)
+        .filter(([key, value]) => value === true && needsSpecific[key])
+        .forEach(([key]) => {
+          selectedRecommendations.push(needsSpecific[key]);
+        });
+    }
+
+    return selectedRecommendations.slice(0, 7);
   },
 };

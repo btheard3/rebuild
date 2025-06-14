@@ -1,17 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
 import { analyticsService } from '@/services/analyticsService';
-import { FileText, Share as ShareIcon, Download, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { openaiService } from '@/services/openaiService';
+import { FileText, Share as ShareIcon, Download, CircleCheck as CheckCircle, Sparkles } from 'lucide-react-native';
 
 export default function SummaryStep() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { data } = useWizard();
   const { deviceType } = useResponsive();
+  
+  const [aiRecommendations, setAiRecommendations] = useState<string[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   
   const getMaxWidth = getResponsiveValue('100%', 600, 800);
   const maxWidth = getMaxWidth(deviceType);
@@ -46,7 +50,10 @@ export default function SummaryStep() {
         },
         body: JSON.stringify({
           userId: user?.id,
-          planData: data,
+          planData: {
+            ...data,
+            aiRecommendations, // Include AI-generated recommendations
+          },
         }),
       });
 
@@ -57,6 +64,7 @@ export default function SummaryStep() {
           planId: result.planId,
           priorityScore: result.priorityScore,
           recommendationsCount: result.recommendations?.length || 0,
+          aiRecommendationsCount: aiRecommendations.length,
         });
         
         console.log('Recovery plan saved successfully:', result);
@@ -68,11 +76,42 @@ export default function SummaryStep() {
     }
   };
 
-  React.useEffect(() => {
+  const generateAIRecommendations = async () => {
+    if (!data.disasterType) return;
+    
+    setLoadingRecommendations(true);
+    analyticsService.trackEvent('ai_recommendations_generation_started', {
+      disasterType: data.disasterType,
+      hasInsurance: data.insurance?.hasInsurance,
+    });
+
+    try {
+      const recommendations = await openaiService.generateRecoveryRecommendations(data);
+      setAiRecommendations(recommendations);
+      
+      analyticsService.trackEvent('ai_recommendations_generated', {
+        disasterType: data.disasterType,
+        recommendationsCount: recommendations.length,
+      });
+    } catch (error) {
+      console.error('Failed to generate AI recommendations:', error);
+      analyticsService.trackError('ai_recommendations_failed', 'SummaryStep', {
+        error: error.message,
+        disasterType: data.disasterType,
+      });
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
+  useEffect(() => {
     // Auto-save the recovery plan when the summary is displayed
     if (user && data.disasterType) {
       saveRecoveryPlan();
     }
+    
+    // Generate AI recommendations
+    generateAIRecommendations();
   }, [user, data]);
   
   const renderSelectedNeeds = () => {
@@ -247,6 +286,49 @@ export default function SummaryStep() {
         </TouchableOpacity>
       </View>
       
+      {/* AI-Generated Recommendations Section */}
+      <View style={[
+        styles.recommendationsCard, 
+        { 
+          backgroundColor: colors.primary + '15',
+          borderColor: colors.primary,
+        }
+      ]}>
+        <View style={styles.recommendationsHeader}>
+          <Sparkles size={24} color={colors.primary} />
+          <Text style={[styles.recommendationsTitle, { color: colors.primary }]}>
+            AI-Powered Recommendations
+          </Text>
+        </View>
+        
+        {loadingRecommendations ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Generating personalized recommendations...
+            </Text>
+          </View>
+        ) : (
+          <>
+            {aiRecommendations.map((recommendation, index) => (
+              <View key={index} style={styles.recommendationItem}>
+                <CheckCircle size={20} color={colors.primary} />
+                <Text style={[styles.recommendationText, { color: colors.text }]}>
+                  {recommendation}
+                </Text>
+              </View>
+            ))}
+            
+            {aiRecommendations.length === 0 && (
+              <Text style={[styles.noRecommendationsText, { color: colors.textSecondary }]}>
+                Unable to generate recommendations at this time. Please check your internet connection and try again.
+              </Text>
+            )}
+          </>
+        )}
+      </View>
+
+      {/* Standard Next Steps */}
       <View style={[
         styles.recommendationsCard, 
         { 
@@ -255,7 +337,7 @@ export default function SummaryStep() {
         }
       ]}>
         <Text style={[styles.recommendationsTitle, { color: colors.success }]}>
-          Next Steps
+          Essential Next Steps
         </Text>
         
         <View style={styles.recommendationItem}>
@@ -403,10 +485,25 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
   },
+  recommendationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   recommendationsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 14,
   },
   recommendationItem: {
     flexDirection: 'row',
@@ -417,5 +514,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginLeft: 8,
     flex: 1,
+    lineHeight: 22,
+  },
+  noRecommendationsText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 });

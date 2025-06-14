@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import { useEffect } from 'react';
-import { Chrome as Home, Search, MapPin, Bell, User, Video, Trophy } from 'lucide-react-native';
+import { Chrome as Home, Search, MapPin, Bell, User, Volume2, Trophy } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
@@ -66,8 +66,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="video-checkin"
         options={{
-          title: 'AI Video',
-          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
+          title: 'AI Voice',
+          tabBarIcon: ({ color, size }) => <Volume2 size={size} color={color} />,
         }}
       />
       <Tabs.Screen

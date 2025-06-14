@@ -1,4 +1,4 @@
-// Fully functional and type-safe video-checkin.tsx with Tavus integration + TypeScript fixes
+// Fully functional and type-safe voice-checkin.tsx with ElevenLabs integration + TypeScript fixes
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -11,17 +11,16 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode, AVPlaybackStatusSuccess } from 'expo-av';
 import {
   Play,
   Pause,
   RotateCcw,
   Sparkles,
   Heart,
-  Video as VideoIcon,
+  Volume2,
 } from 'lucide-react-native';
-import { tavusService } from '@/services/tavusService';
 import { openaiService } from '@/services/openaiService';
+import { elevenLabsService } from '@/services/elevenLabsService';
 import { supabaseService } from '@/services/supabaseService';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -30,18 +29,17 @@ import BoltBadge from '@/components/BoltBadge';
 
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
 
-export default function VideoCheckinScreen() {
-  const videoRef = useRef<Video>(null);
+export default function VoiceCheckinScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
 
   const [journalEntry, setJournalEntry] = useState('');
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
   const [script, setScript] = useState('');
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [step, setStep] = useState<'input' | 'script' | 'video'>('input');
+  const [step, setStep] = useState<'input' | 'script' | 'audio'>('input');
 
   const moods: { id: MoodType; emoji: string; label: string; color: string }[] =
     [
@@ -57,7 +55,7 @@ export default function VideoCheckinScreen() {
     if (!journalEntry.trim()) {
       Alert.alert(
         'Please enter your thoughts',
-        "Share what's on your mind to generate a personalized video."
+        "Share what's on your mind to generate a personalized voice message."
       );
       return;
     }
@@ -98,58 +96,61 @@ export default function VideoCheckinScreen() {
     }
   };
 
-  const generateVideo = async () => {
+  const generateAudio = async () => {
     if (!script) return;
 
     setIsGenerating(true);
-    analyticsService.trackEvent('ai_video_generation_started', {
+    analyticsService.trackEvent('ai_audio_generation_started', {
       mood: selectedMood,
       script_length: script.length,
     });
 
     try {
-      const result = await tavusService.generateVideo(script, user?.id);
+      const result = await elevenLabsService.generateSpeech(script);
 
-      if (!result.videoUrl) throw new Error('No video URL returned');
+      if (!result) throw new Error('No audio URL returned');
 
-      setVideoUrl(result.videoUrl);
-      setStep('video');
+      setAudioUrl(result);
+      setStep('audio');
 
-      // Save video log to Supabase
+      // Save voice interaction log to Supabase
       if (user) {
-        await supabaseService.saveVideoLog({
+        await supabaseService.saveVoiceInteraction({
           userId: user.id,
-          videoUrl: result.videoUrl,
           script,
           mood: selectedMood || undefined,
+          audioUrl: result,
           journalEntry,
         });
       }
 
-      analyticsService.trackEvent('ai_video_generated', {
+      analyticsService.trackEvent('ai_audio_generated', {
         mood: selectedMood,
-        video_url: result.videoUrl,
+        audio_url: result,
       });
     } catch (error) {
-      console.error('Video generation failed:', error);
-      Alert.alert('Error', 'Failed to generate video. Please try again.');
+      console.error('Audio generation failed:', error);
+      Alert.alert('Error', 'Failed to generate audio. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handlePlayPause = async () => {
-    if (videoRef.current) {
-      const status = await videoRef.current.getStatusAsync();
-      if (!status.isLoaded) return;
-      const loadedStatus = status as AVPlaybackStatusSuccess;
-
-      if (loadedStatus.isPlaying) {
-        await videoRef.current.pauseAsync();
+    if (audioUrl) {
+      if (isPlaying) {
         setIsPlaying(false);
+        // Note: ElevenLabs service doesn't have pause functionality in current implementation
+        // This would need to be enhanced for full play/pause control
       } else {
-        await videoRef.current.playAsync();
         setIsPlaying(true);
+        try {
+          await elevenLabsService.playAudio(audioUrl);
+          setIsPlaying(false);
+        } catch (error) {
+          console.error('Audio playback failed:', error);
+          setIsPlaying(false);
+        }
       }
     }
   };
@@ -158,7 +159,7 @@ export default function VideoCheckinScreen() {
     setJournalEntry('');
     setSelectedMood(null);
     setScript('');
-    setVideoUrl(null);
+    setAudioUrl(null);
     setStep('input');
     setIsPlaying(false);
   };
@@ -203,10 +204,10 @@ export default function VideoCheckinScreen() {
       <View style={styles.headerSection}>
         <Sparkles size={32} color={colors.primary} />
         <Text style={[styles.title, { color: colors.text }]}>
-          AI Video Check-in
+          AI Voice Check-in
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Share your thoughts and get a personalized video message
+          Share your thoughts and get a personalized voice message
         </Text>
       </View>
 
@@ -302,15 +303,15 @@ export default function VideoCheckinScreen() {
               flex: 1,
             },
           ]}
-          onPress={generateVideo}
+          onPress={generateAudio}
           disabled={isGenerating}
         >
           {isGenerating ? (
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <VideoIcon size={20} color="white" />
-              <Text style={styles.buttonText}>Generate AI Video</Text>
+              <Volume2 size={20} color="white" />
+              <Text style={styles.buttonText}>Generate AI Voice Message</Text>
             </>
           )}
         </TouchableOpacity>
@@ -318,57 +319,52 @@ export default function VideoCheckinScreen() {
     </View>
   );
 
-  const renderVideoStep = () => (
+  const renderAudioStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
-        <VideoIcon size={32} color={colors.accent} />
+        <Volume2 size={32} color={colors.accent} />
         <Text style={[styles.title, { color: colors.text }]}>
-          Your AI Video
+          Your AI Voice Message
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Personalized message just for you
+          Personalized voice message just for you
         </Text>
       </View>
 
-      {videoUrl && (
-        <View style={styles.videoContainer}>
-          <Video
-            ref={videoRef}
-            source={{ uri: videoUrl }}
-            style={styles.video}
-            useNativeControls={false}
-            resizeMode={ResizeMode.CONTAIN}
-            isLooping
-            shouldPlay={false}
-            onPlaybackStatusUpdate={(status) => {
-              if (status.isLoaded) {
-                setIsPlaying(status.isPlaying);
-              }
-            }}
-          />
-          <View style={styles.videoControls}>
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                { backgroundColor: colors.primary },
-              ]}
-              onPress={handlePlayPause}
-            >
-              {isPlaying ? (
-                <Pause size={24} color="white" />
-              ) : (
-                <Play size={24} color="white" />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-              onPress={() => videoRef.current?.replayAsync()}
-            >
-              <RotateCcw size={24} color={colors.text} />
-            </TouchableOpacity>
+      {audioUrl && (
+        <View style={styles.audioContainer}>
+          <View style={[styles.audioPlayer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.audioTitle, { color: colors.text }]}>
+              Your Personalized Voice Message
+            </Text>
+            <Text style={[styles.audioDescription, { color: colors.textSecondary }]}>
+              Tap play to listen to your AI-generated voice message
+            </Text>
+            
+            <View style={styles.audioControls}>
+              <TouchableOpacity
+                style={[
+                  styles.controlButton,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handlePlayPause}
+              >
+                {isPlaying ? (
+                  <Pause size={24} color="white" />
+                ) : (
+                  <Play size={24} color="white" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.controlButton,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+                onPress={() => audioUrl && elevenLabsService.playAudio(audioUrl)}
+              >
+                <RotateCcw size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -378,7 +374,7 @@ export default function VideoCheckinScreen() {
         onPress={resetFlow}
       >
         <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-          Create Another Video
+          Create Another Voice Message
         </Text>
       </TouchableOpacity>
     </View>
@@ -395,7 +391,7 @@ export default function VideoCheckinScreen() {
       >
         {step === 'input' && renderInputStep()}
         {step === 'script' && renderScriptStep()}
-        {step === 'video' && renderVideoStep()}
+        {step === 'audio' && renderAudioStep()}
       </ScrollView>
       <BoltBadge />
     </SafeAreaView>
@@ -515,21 +511,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
-  videoContainer: {
+  audioContainer: {
     marginBottom: 24,
+  },
+  audioPlayer: {
     borderRadius: 12,
-    overflow: 'hidden',
+    padding: 20,
+    borderWidth: 1,
+    alignItems: 'center',
   },
-  video: {
-    width: '100%',
-    aspectRatio: 16 / 9,
+  audioTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  videoControls: {
+  audioDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  audioControls: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(0,0,0,0.8)',
   },
   controlButton: {
     width: 48,

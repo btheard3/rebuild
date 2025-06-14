@@ -2,29 +2,27 @@
 import { supabase } from '@/services/supabase';
 
 export const supabaseService = {
-  async saveVideoLog({
+  async saveVoiceInteraction({
     userId,
-    videoUrl,
     script,
     mood,
+    audioUrl,
     journalEntry
   }: {
     userId: string;
-    videoUrl: string;
     script: string;
     mood?: string;
+    audioUrl?: string;
     journalEntry?: string;
   }) {
     try {
       const { data, error } = await supabase
-        .from('ai_video_checkins')
+        .from('ai_voice_interactions')
         .insert([{
           user_id: userId,
-          video_id: `video_${Date.now()}`,
-          script,
-          mood,
-          video_url: videoUrl,
-          status: 'completed',
+          interaction_type: 'affirmation',
+          input_text: script,
+          audio_url: audioUrl,
           created_at: new Date().toISOString()
         }])
         .select()
@@ -37,15 +35,15 @@ export const supabaseService = {
 
       return data;
     } catch (error) {
-      console.error('Failed to save video log:', error);
+      console.error('Failed to save voice interaction:', error);
       throw error;
     }
   },
 
-  async getVideoHistory(userId: string, limit: number = 10) {
+  async getVoiceHistory(userId: string, limit: number = 10) {
     try {
       const { data, error } = await supabase
-        .from('ai_video_checkins')
+        .from('ai_voice_interactions')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -58,7 +56,7 @@ export const supabaseService = {
 
       return data || [];
     } catch (error) {
-      console.error('Failed to get video history:', error);
+      console.error('Failed to get voice history:', error);
       return [];
     }
   },
