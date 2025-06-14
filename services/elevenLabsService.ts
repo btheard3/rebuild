@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 
+interface ElevenLabsError extends Error {
+  status?: number;
+  code?: string;
+}
+
 class ElevenLabsService {
   private apiKey: string;
   private baseUrl = 'https://api.elevenlabs.io/v1';
@@ -21,8 +26,17 @@ class ElevenLabsService {
       use_speaker_boost?: boolean;
     } = {}
   ): Promise<string | null> {
+    // Validate input
+    if (!text || text.trim().length === 0) {
+      throw new Error('Text cannot be empty');
+    }
+
+    if (text.length > 5000) {
+      throw new Error('Text is too long. Maximum 5000 characters allowed.');
+    }
+
     // Check cache first (24-hour expiry for emergency alerts)
-    const cacheKey = `${text}-${voiceId}`;
+    const cacheKey = `${text.substring(0, 100)}-${voiceId}`;
     const cached = this.cache.get(cacheKey);
     const expiry = this.cacheExpiry.get(cacheKey);
     
@@ -31,7 +45,7 @@ class ElevenLabsService {
       return cached;
     }
 
-    if (Platform.OS === 'web' || !this.apiKey) {
+    if (Platform.OS === 'web' || !this.apiKey || this.apiKey.includes('your_elevenlabs_api_key')) {
       // Mock audio URL for web or when API key is missing
       console.log('🎵 Using mock audio for development');
       return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
@@ -46,7 +60,7 @@ class ElevenLabsService {
           'xi-api-key': this.apiKey,
         },
         body: JSON.stringify({
-          text,
+          text: text.trim(),
           model_id: 'eleven_monolingual_v1',
           voice_settings: {
             stability: options.stability || 0.75, // Emergency alert optimized
@@ -54,13 +68,33 @@ class ElevenLabsService {
             style: options.style || 0.15, // Professional tone
             use_speaker_boost: options.use_speaker_boost || true, // Enhanced clarity
           },
-          // Note: Speaking rate (0.9 for emergency alerts) is controlled by the model
-          // and cannot be directly set via voice_settings for eleven_monolingual_v1
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        let errorMessage = `ElevenLabs API error: ${response.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage += ` - ${errorData.detail?.message || errorData.message || errorText}`;
+        } catch {
+          errorMessage += ` - ${errorText}`;
+        }
+
+        const error = new Error(errorMessage) as ElevenLabsError;
+        error.status = response.status;
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          error.message = 'Invalid ElevenLabs API key. Please check your configuration.';
+        } else if (response.status === 429) {
+          error.message = 'Rate limit exceeded. Please try again in a moment.';
+        } else if (response.status === 422) {
+          error.message = 'Invalid request. Please check your text input.';
+        }
+        
+        throw error;
       }
 
       const audioBlob = await response.blob();
@@ -73,32 +107,74 @@ class ElevenLabsService {
       return audioUrl;
     } catch (error) {
       console.error('Failed to generate speech:', error);
-      return null;
+      
+      if (error instanceof Error) {
+        // Re-throw with more user-friendly messages
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          throw new Error('Network connection issue. Please check your internet connection.');
+        } else if (error.message.includes('rate limit')) {
+          throw new Error('Service temporarily busy. Please try again in a moment.');
+        } else if (error.message.includes('quota') || error.message.includes('credits')) {
+          throw new Error('Voice service quota exceeded. Please try again later.');
+        }
+      }
+      
+      throw error;
     }
   }
 
   async playAudio(audioUrl: string): Promise<void> {
     try {
+      // Configure audio session for emergency alerts
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
-        { shouldPlay: true, volume: 1.0 } // Full volume for emergency alerts
+        { 
+          shouldPlay: true, 
+          volume: 1.0, // Full volume for emergency alerts
+          rate: 1.0,
+          shouldCorrectPitch: true,
+        }
       );
       
       // Clean up sound after playing
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync();
+          sound.unloadAsync().catch(console.warn);
         }
       });
+
+      // Handle playback errors
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.error) {
+          console.error('Audio playback error:', status.error);
+        }
+      });
+
     } catch (error) {
       console.error('Failed to play audio:', error);
+      throw new Error('Unable to play audio. Please check your device audio settings.');
     }
   }
 
   async generateAndPlaySpeech(text: string, voiceId?: string): Promise<void> {
-    const audioUrl = await this.generateSpeech(text, voiceId);
-    if (audioUrl) {
-      await this.playAudio(audioUrl);
+    try {
+      const audioUrl = await this.generateSpeech(text, voiceId);
+      if (audioUrl) {
+        await this.playAudio(audioUrl);
+      } else {
+        throw new Error('Failed to generate audio');
+      }
+    } catch (error) {
+      console.error('Generate and play speech error:', error);
+      throw error;
     }
   }
 
@@ -136,6 +212,13 @@ class ElevenLabsService {
 
   // Clear cache (useful for testing or memory management)
   clearCache(): void {
+    // Clean up blob URLs to prevent memory leaks
+    this.cache.forEach(url => {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    
     this.cache.clear();
     this.cacheExpiry.clear();
   }
@@ -146,6 +229,25 @@ class ElevenLabsService {
       size: this.cache.size,
       entries: Array.from(this.cache.keys())
     };
+  }
+
+  // Health check method
+  async healthCheck(): Promise<boolean> {
+    try {
+      if (!this.apiKey || this.apiKey.includes('your_elevenlabs_api_key')) {
+        return false;
+      }
+
+      const response = await fetch(`${this.baseUrl}/voices`, {
+        headers: {
+          'xi-api-key': this.apiKey,
+        },
+      });
+
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }
 

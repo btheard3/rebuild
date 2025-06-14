@@ -1,26 +1,26 @@
 // @services/openaiService.ts
 
+interface OpenAIError extends Error {
+  status?: number;
+  code?: string;
+}
+
 export const openaiService = {
   async generateScript(journalEntry: string, mood?: string): Promise<string> {
     try {
       const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
-      if (!apiKey || apiKey.includes('placeholder')) {
-        console.log('🤖 Simulating OpenAI script generation for journal entry');
-
-        // Simulate API delay
+      if (!apiKey || apiKey.includes('placeholder') || apiKey.startsWith('sk-...')) {
+        console.log('🤖 OpenAI API key not configured, using mock response');
+        
+        // Simulate API delay for realistic UX
         await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Return a demo script based on mood or content
-        if (mood) {
-          return this.generateMockScriptByMood(mood, journalEntry);
-        }
-
-        return `Hi there! I wanted to check in with you today. Based on your recent thoughts, it sounds like you're navigating some important feelings. Remember that every step forward in your recovery journey matters, no matter how small. You're showing incredible strength by taking time to reflect and process your experiences. Keep taking things one day at a time, and know that support is always available when you need it.`;
+        
+        return this.generateMockScriptByMood(mood || 'default', journalEntry);
       }
 
       const moodContext = mood ? ` The person is feeling ${mood}.` : '';
-      const prompt = `Convert the following journal entry into a warm, supportive 30-second voice message script for someone going through disaster recovery.${moodContext} Make it encouraging and personalized:\n\n"${journalEntry}"\n\nScript:`;
+      const prompt = `Convert the following journal entry into a warm, supportive 30-second voice message script for someone going through disaster recovery.${moodContext} Make it encouraging and personalized. Keep it under 150 words:\n\n"${journalEntry}"\n\nScript:`;
 
       const response = await fetch(
         'https://api.openai.com/v1/chat/completions',
@@ -31,26 +31,49 @@ export const openaiService = {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4',
+            model: 'gpt-4o-mini', // Use more cost-effective model
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 200,
+            presence_penalty: 0.1,
+            frequency_penalty: 0.1,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`) as OpenAIError;
+        error.status = response.status;
+        error.code = errorData.error?.code;
+        throw error;
       }
 
       const data = await response.json();
-      return (
-        data.choices?.[0]?.message?.content?.trim() ||
-        'Unable to generate script at this time.'
-      );
+      const content = data.choices?.[0]?.message?.content?.trim();
+      
+      if (!content) {
+        throw new Error('No content received from OpenAI API');
+      }
+
+      return content;
     } catch (error) {
-      console.error('OpenAI API error:', error);
-      throw new Error('Failed to generate script');
+      console.error('OpenAI script generation error:', error);
+      
+      // Provide fallback response for better UX
+      if (error instanceof Error) {
+        if (error.message.includes('rate limit')) {
+          throw new Error('Service temporarily busy. Please try again in a moment.');
+        } else if (error.message.includes('quota')) {
+          throw new Error('Service quota exceeded. Please try again later.');
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          throw new Error('Network connection issue. Please check your internet connection.');
+        }
+      }
+      
+      // Return mock response as fallback
+      console.log('Falling back to mock response due to API error');
+      return this.generateMockScriptByMood(mood || 'default', journalEntry);
     }
   },
 
@@ -58,8 +81,8 @@ export const openaiService = {
     try {
       const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
-      if (!apiKey || apiKey.includes('placeholder')) {
-        console.log('🤖 Simulating OpenAI recovery recommendations');
+      if (!apiKey || apiKey.includes('placeholder') || apiKey.startsWith('sk-...')) {
+        console.log('🤖 OpenAI API key not configured, using mock recommendations');
         
         // Simulate API delay
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -79,7 +102,7 @@ Context:
   .map(([key]) => key)
   .join(', ') || 'None specified'}
 
-Provide practical, prioritized recommendations that are specific to their situation. Each recommendation should be actionable and include specific next steps. Format as a JSON array of strings.`;
+Provide practical, prioritized recommendations that are specific to their situation. Each recommendation should be actionable and include specific next steps. Format as a JSON array of strings. Keep each recommendation under 100 characters.`;
 
       const response = await fetch(
         'https://api.openai.com/v1/chat/completions',
@@ -90,32 +113,50 @@ Provide practical, prioritized recommendations that are specific to their situat
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4',
+            model: 'gpt-4o-mini',
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
-            max_tokens: 500,
+            max_tokens: 800,
+            response_format: { type: "json_object" },
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content?.trim();
       
+      if (!content) {
+        throw new Error('No content received from OpenAI API');
+      }
+
       try {
-        return JSON.parse(content);
-      } catch {
-        // If JSON parsing fails, split by lines and clean up
-        return content.split('\n')
+        const parsed = JSON.parse(content);
+        if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
+          return parsed.recommendations.slice(0, 7);
+        } else if (Array.isArray(parsed)) {
+          return parsed.slice(0, 7);
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, try to extract recommendations from text
+        const lines = content.split('\n')
           .filter((line: string) => line.trim().length > 0)
-          .map((line: string) => line.replace(/^[-•*]\s*/, '').trim())
+          .map((line: string) => line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+          .filter((line: string) => line.length > 10)
           .slice(0, 7);
+        
+        return lines.length > 0 ? lines : this.generateMockRecommendations(planData);
       }
     } catch (error) {
       console.error('OpenAI recommendations error:', error);
+      
+      // Always provide fallback recommendations
       return this.generateMockRecommendations(planData);
     }
   },
@@ -142,50 +183,50 @@ Provide practical, prioritized recommendations that are specific to their situat
 
   generateMockRecommendations(planData: any): string[] {
     const baseRecommendations = [
-      'Contact FEMA at 1-800-621-3362 to apply for Individual Assistance within 60 days of the disaster declaration',
-      'Document all damage with photos and videos before beginning any cleanup for insurance and FEMA claims',
-      'Keep detailed records of all disaster-related expenses, including receipts for temporary lodging, food, and supplies',
+      'Contact FEMA at 1-800-621-3362 to apply for Individual Assistance within 60 days',
+      'Document all damage with photos and videos before beginning cleanup',
+      'Keep detailed records of all disaster-related expenses and receipts',
     ];
 
     const disasterSpecific: Record<string, string[]> = {
       hurricane: [
-        'Apply for SBA disaster loans for property damage and economic injury at disasterloanassistance.sba.gov',
-        'Contact your insurance company immediately to file claims for wind and water damage',
-        'Register with local emergency management for updates on utility restoration and debris removal',
+        'Apply for SBA disaster loans at disasterloanassistance.sba.gov',
+        'Contact your insurance company immediately to file wind and water damage claims',
+        'Register with local emergency management for utility restoration updates',
       ],
       flood: [
-        'Contact the National Flood Insurance Program if you have flood insurance coverage',
-        'Have your home professionally inspected for mold and structural damage before re-entering',
-        'Apply for SBA disaster loans specifically for flood damage repair and replacement',
+        'Contact the National Flood Insurance Program if you have flood coverage',
+        'Have your home professionally inspected for mold and structural damage',
+        'Apply for SBA disaster loans specifically for flood damage repair',
       ],
       fire: [
-        'Contact your homeowner\'s insurance immediately as fire damage claims are time-sensitive',
-        'Register with local authorities for debris removal and hazardous material cleanup services',
-        'Apply for temporary housing assistance through FEMA while your home is being rebuilt',
+        'Contact your homeowner\'s insurance immediately for fire damage claims',
+        'Register with local authorities for debris removal services',
+        'Apply for temporary housing assistance through FEMA',
       ],
       earthquake: [
         'Have your home inspected by a structural engineer before re-occupying',
         'Contact your earthquake insurance provider if you have coverage',
-        'Apply for SBA disaster loans for earthquake-specific structural repairs',
+        'Apply for SBA disaster loans for earthquake-specific repairs',
       ],
       tornado: [
         'Contact your homeowner\'s insurance for wind damage claims',
         'Register for debris removal services with local emergency management',
-        'Apply for FEMA assistance for temporary housing and home repairs',
+        'Apply for FEMA assistance for temporary housing and repairs',
       ],
     };
 
     const needsSpecific: Record<string, string> = {
-      shelter: 'Contact the Red Cross at 1-800-733-2767 for immediate emergency shelter assistance',
+      shelter: 'Contact the Red Cross at 1-800-733-2767 for emergency shelter assistance',
       food: 'Locate nearby food banks and emergency food distribution centers through 211',
       medical: 'Find mobile medical clinics and disaster health services in your area',
       utilities: 'Contact utility companies to report outages and get restoration timelines',
-      transportation: 'Apply for disaster-related transportation assistance through local social services',
+      transportation: 'Apply for disaster-related transportation assistance through local services',
     };
 
     const insuranceRecommendations = planData.insurance?.hasInsurance
       ? [
-          `Contact ${planData.insurance.provider || 'your insurance company'} immediately to file your claim`,
+          `Contact ${planData.insurance.provider || 'your insurance company'} immediately`,
           'Request an adjuster inspection as soon as possible to assess damage',
           'Keep detailed records of all communications with your insurance company',
         ]

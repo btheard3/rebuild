@@ -1,13 +1,28 @@
 {
-  "name": "search-rescue-app",
+  "name": "rebuild-disaster-recovery",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
+  "description": "A comprehensive disaster recovery application with AI-powered tools, secure document storage, and personalized support.",
+  "keywords": ["disaster-recovery", "react-native", "expo", "ai", "blockchain", "mental-health"],
+  "author": "Rebuild Team",
+  "license": "MIT",
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
+    "start": "expo start",
     "build:web": "expo export --platform web",
+    "build:ios": "expo build:ios",
+    "build:android": "expo build:android",
     "lint": "expo lint",
-    "create-alert": "node scripts/create-test-alert.js"
+    "lint:fix": "expo lint --fix",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "clean": "expo r -c",
+    "prebuild": "expo prebuild",
+    "create-alert": "node scripts/create-test-alert.js",
+    "postinstall": "expo install --fix"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -69,5 +84,17 @@
     "@types/react-native": "^0.73.0",
     "dotenv": "^16.5.0",
     "typescript": "~5.8.3"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rebuild-team/rebuild-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rebuild-team/rebuild-app/issues"
+  },
+  "homepage": "https://rebuild-app.com"
 }
