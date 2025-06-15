@@ -21,13 +21,14 @@ export default {
       package: 'com.rebuild.disasterrecovery',
     },
     web: {
-      bundler: 'metro',
-      output: 'server',
+      bundler: 'webpack',
+      output: 'static',
       favicon: './assets/images/favicon.png',
     },
     extra: {
       // Expose environment variables to the app
-      EXPO_PUBLIC_ELEVENLABS_API_KEY: process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
+      EXPO_PUBLIC_ELEVENLABS_API_KEY:
+        process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
       EXPO_PUBLIC_OPENAI_API_KEY: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
