@@ -9,6 +9,7 @@ export default {
     icon: './assets/images/icon.png',
     scheme: 'rebuild',
     userInterfaceStyle: 'automatic',
+    platforms: ['ios', 'android', 'web'],
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.rebuild.disasterrecovery',
