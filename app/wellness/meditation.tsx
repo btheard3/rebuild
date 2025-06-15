@@ -7,10 +7,14 @@ import {
   ScrollView,
   Alert,
   Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Play, Pause, RotateCcw, Clock, Heart, Sparkles } from 'lucide-react-native';
+import { Audio } from 'expo-av';
+import { useTheme } from '@/context/ThemeContext';
+import { analyticsService } from '@/services/analyticsService';
 
 interface MeditationSession {
   id: string;
@@ -19,15 +23,19 @@ interface MeditationSession {
   duration: number; // in minutes
   type: 'breathing' | 'mindfulness' | 'body-scan' | 'loving-kindness';
   color: string;
+  audioUrl?: string; // Optional audio URL for guided meditations
 }
 
 export default function MeditationScreen() {
+  const { colors } = useTheme();
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const [breathingCount, setBreathingCount] = useState(0);
   const [scaleAnim] = useState(new Animated.Value(1));
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const sessions: MeditationSession[] = [
     {
@@ -44,7 +52,8 @@ export default function MeditationScreen() {
       description: 'Present-moment awareness meditation',
       duration: 10,
       type: 'mindfulness',
-      color: '#3B82F6'
+      color: '#3B82F6',
+      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-relaxing-in-nature-522.mp3'
     },
     {
       id: '3',
@@ -52,7 +61,8 @@ export default function MeditationScreen() {
       description: 'Progressive relaxation through body awareness',
       duration: 15,
       type: 'body-scan',
-      color: '#8B5CF6'
+      color: '#8B5CF6',
+      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3'
     },
     {
       id: '4',
@@ -60,9 +70,21 @@ export default function MeditationScreen() {
       description: 'Cultivate compassion for yourself and others',
       duration: 12,
       type: 'loving-kindness',
-      color: '#EF4444'
+      color: '#EF4444',
+      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3'
     }
   ];
+
+  useEffect(() => {
+    analyticsService.trackScreen('meditation');
+    
+    return () => {
+      // Clean up any playing audio when component unmounts
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -73,7 +95,13 @@ export default function MeditationScreen() {
       }, 1000);
     } else if (timeLeft === 0 && isActive) {
       setIsActive(false);
+      stopAudio();
       Alert.alert('Session Complete', 'Great job! You\'ve completed your meditation session.');
+      analyticsService.trackEvent('meditation_completed', {
+        session_id: selectedSession?.id,
+        session_title: selectedSession?.title,
+        duration: selectedSession?.duration
+      });
     }
     
     return () => clearInterval(interval);
@@ -115,20 +143,50 @@ export default function MeditationScreen() {
     }).start();
   };
 
-  const startSession = (session: MeditationSession) => {
+  const startSession = async (session: MeditationSession) => {
     setSelectedSession(session);
     setTimeLeft(session.duration * 60);
     setIsActive(true);
     setBreathingCount(0);
     setBreathingPhase('inhale');
+    
+    analyticsService.trackEvent('meditation_started', {
+      session_id: session.id,
+      session_title: session.title,
+      session_type: session.type
+    });
+    
+    // If there's audio, load and play it
+    if (session.audioUrl && Platform.OS !== 'web') {
+      try {
+        // Unload any existing audio
+        if (sound) {
+          await sound.unloadAsync();
+        }
+        
+        // Load new audio
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: session.audioUrl },
+          { shouldPlay: true, isLooping: true, volume: 0.5 }
+        );
+        
+        setSound(newSound);
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Failed to load audio:', error);
+        Alert.alert('Audio Error', 'Could not load meditation audio. The session will continue without audio.');
+      }
+    }
   };
 
   const pauseSession = () => {
     setIsActive(false);
+    pauseAudio();
   };
 
   const resumeSession = () => {
     setIsActive(true);
+    resumeAudio();
   };
 
   const resetSession = () => {
@@ -137,6 +195,42 @@ export default function MeditationScreen() {
     setBreathingCount(0);
     setBreathingPhase('inhale');
     scaleAnim.setValue(1);
+    stopAudio();
+  };
+
+  const pauseAudio = async () => {
+    if (sound) {
+      try {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+      } catch (error) {
+        console.error('Failed to pause audio:', error);
+      }
+    }
+  };
+
+  const resumeAudio = async () => {
+    if (sound) {
+      try {
+        await sound.playAsync();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Failed to resume audio:', error);
+      }
+    }
+  };
+
+  const stopAudio = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+        setIsPlaying(false);
+      } catch (error) {
+        console.error('Failed to stop audio:', error);
+      }
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -158,18 +252,19 @@ export default function MeditationScreen() {
 
   if (selectedSession) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => {
               setSelectedSession(null);
               setIsActive(false);
+              stopAudio();
             }}
           >
-            <ArrowLeft size={24} color="#F8FAFC" />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{selectedSession.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{selectedSession.title}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -179,7 +274,7 @@ export default function MeditationScreen() {
             <Text style={[styles.timerText, { color: selectedSession.color }]}>
               {formatTime(timeLeft)}
             </Text>
-            <Text style={styles.timerLabel}>remaining</Text>
+            <Text style={[styles.timerLabel, { color: colors.textSecondary }]}>remaining</Text>
           </View>
 
           {/* Breathing Animation */}
@@ -204,13 +299,19 @@ export default function MeditationScreen() {
 
           {/* Session Description */}
           <View style={styles.descriptionContainer}>
-            <Text style={styles.sessionDescription}>
+            <Text style={[styles.sessionDescription, { color: colors.text }]}>
               {selectedSession.description}
             </Text>
             
             {selectedSession.type === 'breathing' && (
-              <Text style={styles.instructionText}>
+              <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
                 Follow the circle's movement: inhale as it grows, hold when it pauses, exhale as it shrinks.
+              </Text>
+            )}
+            
+            {selectedSession.type !== 'breathing' && (
+              <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
+                Find a comfortable position, close your eyes, and focus on your breath. Let the guided audio help you relax.
               </Text>
             )}
           </View>
@@ -243,34 +344,43 @@ export default function MeditationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <ArrowLeft size={24} color="#F8FAFC" />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Meditation</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Meditation</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.introSection}>
-          <Sparkles size={32} color="#3B82F6" />
-          <Text style={styles.introTitle}>Find Your Peace</Text>
-          <Text style={styles.introText}>
+          <Sparkles size={32} color={colors.primary} />
+          <Text style={[styles.introTitle, { color: colors.text }]}>Find Your Peace</Text>
+          <Text style={[styles.introText, { color: colors.textSecondary }]}>
             Take a moment to center yourself with guided meditation sessions designed to reduce stress and promote wellbeing.
           </Text>
         </View>
 
+        {Platform.OS === 'web' && (
+          <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
+            <Text style={[styles.warningTitle, { color: colors.warning }]}>Audio Limitations</Text>
+            <Text style={[styles.warningText, { color: colors.text }]}>
+              For the best meditation experience with audio, please use the Expo Go app on your mobile device. Some audio features may be limited on web.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.sessionsContainer}>
-          <Text style={styles.sectionTitle}>Choose a Session</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose a Session</Text>
           
           {sessions.map((session) => (
             <TouchableOpacity
               key={session.id}
-              style={[styles.sessionCard, { borderColor: session.color + '30' }]}
+              style={[styles.sessionCard, { borderColor: session.color + '30', backgroundColor: colors.surface }]}
               onPress={() => startSession(session)}
               activeOpacity={0.8}
             >
@@ -279,8 +389,8 @@ export default function MeditationScreen() {
               </View>
               
               <View style={styles.sessionInfo}>
-                <Text style={styles.sessionTitle}>{session.title}</Text>
-                <Text style={styles.sessionDesc}>{session.description}</Text>
+                <Text style={[styles.sessionTitle, { color: colors.text }]}>{session.title}</Text>
+                <Text style={[styles.sessionDesc, { color: colors.textSecondary }]}>{session.description}</Text>
                 <Text style={[styles.sessionDuration, { color: session.color }]}>
                   {session.duration} minutes
                 </Text>
@@ -293,10 +403,10 @@ export default function MeditationScreen() {
           ))}
         </View>
 
-        <View style={styles.benefitsCard}>
-          <Heart size={24} color="#EF4444" />
-          <Text style={styles.benefitsTitle}>Benefits of Meditation</Text>
-          <Text style={styles.benefitsText}>
+        <View style={[styles.benefitsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Heart size={24} color={colors.error} />
+          <Text style={[styles.benefitsTitle, { color: colors.text }]}>Benefits of Meditation</Text>
+          <Text style={[styles.benefitsText, { color: colors.textSecondary }]}>
             • Reduces stress and anxiety{'\n'}
             • Improves focus and concentration{'\n'}
             • Promotes emotional wellbeing{'\n'}
@@ -312,7 +422,6 @@ export default function MeditationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
   },
   header: {
     flexDirection: 'row',
@@ -321,7 +430,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
   },
   backButton: {
     padding: 8,
@@ -329,7 +437,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#F8FAFC',
   },
   placeholder: {
     width: 40,
@@ -345,15 +452,28 @@ const styles = StyleSheet.create({
   introTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginTop: 16,
     marginBottom: 12,
   },
   introText: {
     fontSize: 16,
-    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  warningCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   sessionsContainer: {
     marginBottom: 32,
@@ -361,13 +481,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 20,
   },
   sessionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -387,12 +505,10 @@ const styles = StyleSheet.create({
   sessionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 4,
   },
   sessionDesc: {
     fontSize: 14,
-    color: '#94A3B8',
     marginBottom: 8,
   },
   sessionDuration: {
@@ -422,7 +538,6 @@ const styles = StyleSheet.create({
   },
   timerLabel: {
     fontSize: 16,
-    color: '#94A3B8',
     marginTop: 8,
   },
   breathingContainer: {
@@ -450,13 +565,11 @@ const styles = StyleSheet.create({
   },
   sessionDescription: {
     fontSize: 18,
-    color: '#F8FAFC',
     textAlign: 'center',
     marginBottom: 16,
   },
   instructionText: {
     fontSize: 14,
-    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -480,24 +593,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   benefitsCard: {
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 24,
     marginBottom: 40,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   benefitsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginTop: 16,
     marginBottom: 16,
   },
   benefitsText: {
     fontSize: 14,
-    color: '#94A3B8',
     lineHeight: 22,
     textAlign: 'center',
   },

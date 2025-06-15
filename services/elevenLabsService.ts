@@ -11,9 +11,11 @@ class ElevenLabsService {
   private baseUrl = 'https://api.elevenlabs.io/v1';
   private cache: Map<string, string> = new Map();
   private cacheExpiry: Map<string, number> = new Map();
+  private sound: Audio.Sound | null = null;
 
   constructor() {
     this.apiKey = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY || '';
+    this.sound = null;
   }
 
   async generateSpeech(
@@ -45,17 +47,20 @@ class ElevenLabsService {
       return cached;
     }
 
-    if (
-      Platform.OS === 'web' ||
-      !this.apiKey ||
-      this.apiKey.includes('your_elevenlabs_api_key')
-    ) {
-      // Mock audio URL for web or when API key is missing
-      console.log('🎵 Using mock audio for development');
+    // Check if we're on web platform
+    if (Platform.OS === 'web') {
+      console.log('🎵 Web platform detected - audio generation not supported');
+      return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
+    }
+
+    // Check if API key is missing or invalid
+    if (!this.apiKey || this.apiKey.includes('your_elevenlabs_api_key')) {
+      console.log('🎵 Using mock audio due to missing API key');
       return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
     }
 
     try {
+      console.log('🎵 Generating speech with ElevenLabs API');
       const response = await fetch(
         `${this.baseUrl}/text-to-speech/${voiceId}`,
         {
@@ -108,7 +113,21 @@ class ElevenLabsService {
       }
 
       const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // For React Native, we need to handle the blob differently
+      // Create a temporary file URL that can be used by the Audio API
+      const fileReaderInstance = new FileReader();
+      const audioUrl = await new Promise<string>((resolve, reject) => {
+        fileReaderInstance.onload = () => {
+          const base64data = fileReaderInstance.result;
+          // Convert to a format that can be used by Expo AV
+          resolve(base64data as string);
+        };
+        fileReaderInstance.onerror = () => {
+          reject(new Error('Failed to read audio blob'));
+        };
+        fileReaderInstance.readAsDataURL(audioBlob);
+      });
 
       // Cache for 24 hours (emergency alerts)
       this.cache.set(cacheKey, audioUrl);
@@ -146,7 +165,19 @@ class ElevenLabsService {
   }
 
   async playAudio(audioUrl: string): Promise<void> {
+    // Check if we're on web platform
+    if (Platform.OS === 'web') {
+      console.log('🎵 Audio playback not supported on web');
+      throw new Error('Audio playback is not supported on web platforms');
+    }
+
     try {
+      // Unload any existing sound
+      if (this.sound) {
+        await this.sound.unloadAsync();
+        this.sound = null;
+      }
+
       // Configure audio session for emergency alerts
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
@@ -166,18 +197,20 @@ class ElevenLabsService {
         }
       );
 
+      this.sound = sound;
+
       // Clean up sound after playing
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
           sound.unloadAsync().catch(console.warn);
+          this.sound = null;
         }
       });
 
       // Handle playback errors
-      // ✅ Type-safe check for error using type narrowing
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded) {
-          if ('error' in status && status.error) {
+          if ('error' in status) {
             console.error('Audio playback error:', status.error);
           }
         }

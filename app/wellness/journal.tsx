@@ -9,11 +9,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Save, Calendar, Heart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/services/supabaseClient';
+import { analyticsService } from '@/services/analyticsService';
 
 interface JournalEntry {
   id: string;
@@ -24,12 +29,16 @@ interface JournalEntry {
 }
 
 export default function JournalScreen() {
+  const { colors } = useTheme();
+  const { user } = useAuth();
   const [content, setContent] = useState('');
   const [currentMood, setCurrentMood] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [recentEntries, setRecentEntries] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    analyticsService.trackScreen('journal');
     loadCurrentMood();
     loadRecentEntries();
   }, []);
@@ -47,7 +56,33 @@ export default function JournalScreen() {
   };
 
   const loadRecentEntries = async () => {
+    setIsLoading(true);
     try {
+      // First try to load from Supabase if user is logged in
+      if (user) {
+        const { data, error } = await supabase
+          .from('wellness_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('entry_type', 'journal')
+          .order('created_at', { ascending: false })
+          .limit(3);
+          
+        if (!error && data && data.length > 0) {
+          const formattedEntries = data.map(entry => ({
+            id: entry.id,
+            content: entry.content || '',
+            mood: entry.mood,
+            date: entry.created_at,
+            timestamp: new Date(entry.created_at).getTime()
+          }));
+          setRecentEntries(formattedEntries);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Fallback to AsyncStorage
       const entries = await AsyncStorage.getItem('journal_entries');
       if (entries) {
         const parsedEntries = JSON.parse(entries);
@@ -55,6 +90,8 @@ export default function JournalScreen() {
       }
     } catch (error) {
       console.error('Error loading recent entries:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -75,7 +112,27 @@ export default function JournalScreen() {
         timestamp: Date.now(),
       };
 
-      // Load existing entries
+      // Save to Supabase if user is logged in
+      if (user) {
+        const { data, error } = await supabase
+          .from('wellness_entries')
+          .insert([{
+            user_id: user.id,
+            entry_type: 'journal',
+            mood: currentMood,
+            content: content.trim(),
+            created_at: new Date().toISOString()
+          }]);
+          
+        if (error) {
+          console.error('Error saving to Supabase:', error);
+          // Continue with local storage as fallback
+        } else {
+          analyticsService.trackEvent('journal_entry_saved_to_supabase');
+        }
+      }
+
+      // Always save to AsyncStorage as backup
       const existingEntries = await AsyncStorage.getItem('journal_entries');
       const entries = existingEntries ? JSON.parse(existingEntries) : [];
       
@@ -85,14 +142,19 @@ export default function JournalScreen() {
       // Save back to storage
       await AsyncStorage.setItem('journal_entries', JSON.stringify(updatedEntries));
       
-      // TODO: In a real app, also save to Supabase
-      // await saveEntryToSupabase(newEntry);
+      analyticsService.trackEvent('journal_entry_saved', {
+        character_count: content.length,
+        has_mood: !!currentMood
+      });
       
       Alert.alert(
         'Entry Saved',
         'Your journal entry has been saved successfully.',
         [
-          { text: 'Write Another', onPress: () => setContent('') },
+          { text: 'Write Another', onPress: () => {
+            setContent('');
+            loadRecentEntries(); // Refresh the list
+          }},
           { text: 'Done', onPress: () => router.back() }
         ]
       );
@@ -120,81 +182,105 @@ export default function JournalScreen() {
       good: '🙂',
       okay: '😐',
       sad: '😔',
-      stressed: '😰'
+      stressed: '😰',
+      anxious: '😟'
     };
     return moodMap[mood] || '😐';
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView 
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={24} color="#F8FAFC" />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Journal</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Journal</Text>
           <TouchableOpacity 
             style={[styles.saveButton, { opacity: content.trim() ? 1 : 0.5 }]}
             onPress={saveEntry}
             disabled={!content.trim() || isSaving}
           >
-            <Save size={20} color="#10B981" />
+            {isSaving ? (
+              <ActivityIndicator size="small" color={colors.success} />
+            ) : (
+              <Save size={20} color={colors.success} />
+            )}
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Current Mood Display */}
           {currentMood && (
-            <View style={styles.moodCard}>
+            <View style={[styles.moodCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={styles.moodEmoji}>{getMoodEmoji(currentMood)}</Text>
-              <Text style={styles.moodText}>
+              <Text style={[styles.moodText, { color: colors.text }]}>
                 Today you're feeling {currentMood}
               </Text>
             </View>
           )}
 
           {/* Writing Prompt */}
-          <View style={styles.promptCard}>
-            <Heart size={20} color="#EF4444" />
-            <Text style={styles.promptText}>
+          <View style={[styles.promptCard, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}>
+            <Heart size={20} color={colors.error} />
+            <Text style={[styles.promptText, { color: colors.text }]}>
               What's on your mind today? Write about your thoughts, feelings, or anything that matters to you.
             </Text>
           </View>
 
           {/* Text Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Your thoughts...</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Your thoughts...</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput, 
+                { 
+                  backgroundColor: colors.surface, 
+                  color: colors.text,
+                  borderColor: colors.border
+                }
+              ]}
               multiline
               placeholder="Start writing here..."
-              placeholderTextColor="#64748B"
+              placeholderTextColor={colors.textSecondary}
               value={content}
               onChangeText={setContent}
               textAlignVertical="top"
             />
-            <Text style={styles.characterCount}>
+            <Text style={[styles.characterCount, { color: colors.textSecondary }]}>
               {content.length} characters
             </Text>
           </View>
 
           {/* Recent Entries */}
-          {recentEntries.length > 0 && (
-            <View style={styles.recentSection}>
-              <Text style={styles.recentTitle}>Recent Entries</Text>
-              {recentEntries.map((entry) => (
-                <View key={entry.id} style={styles.recentEntry}>
+          <View style={styles.recentSection}>
+            <Text style={[styles.recentTitle, { color: colors.text }]}>Recent Entries</Text>
+            
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Loading recent entries...
+                </Text>
+              </View>
+            ) : recentEntries.length > 0 ? (
+              recentEntries.map((entry) => (
+                <View key={entry.id} style={[styles.recentEntry, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.recentHeader}>
                     <View style={styles.recentDate}>
-                      <Calendar size={14} color="#94A3B8" />
-                      <Text style={styles.recentDateText}>
+                      <Calendar size={14} color={colors.textSecondary} />
+                      <Text style={[styles.recentDateText, { color: colors.textSecondary }]}>
                         {formatDate(entry.date)}
                       </Text>
                     </View>
@@ -204,18 +290,24 @@ export default function JournalScreen() {
                       </Text>
                     )}
                   </View>
-                  <Text style={styles.recentContent} numberOfLines={2}>
+                  <Text style={[styles.recentContent, { color: colors.text }]} numberOfLines={2}>
                     {entry.content}
                   </Text>
                 </View>
-              ))}
-            </View>
-          )}
+              ))
+            ) : (
+              <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                  No journal entries yet. Start writing to see your entries here.
+                </Text>
+              </View>
+            )}
+          </View>
 
           {/* Writing Tips */}
-          <View style={styles.tipsCard}>
-            <Text style={styles.tipsTitle}>✨ Writing Tips</Text>
-            <Text style={styles.tipsText}>
+          <View style={[styles.tipsCard, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+            <Text style={[styles.tipsTitle, { color: colors.primary }]}>✨ Writing Tips</Text>
+            <Text style={[styles.tipsText, { color: colors.text }]}>
               • Write freely without worrying about grammar or structure{'\n'}
               • Focus on your emotions and how events made you feel{'\n'}
               • Be honest and authentic with yourself{'\n'}
@@ -231,7 +323,6 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
   },
   keyboardAvoid: {
     flex: 1,
@@ -243,7 +334,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
   },
   backButton: {
     padding: 8,
@@ -251,7 +341,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#F8FAFC',
   },
   saveButton: {
     padding: 8,
@@ -263,36 +352,32 @@ const styles = StyleSheet.create({
   moodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
     borderRadius: 12,
     padding: 16,
     marginTop: 20,
     marginBottom: 16,
     gap: 12,
+    borderWidth: 1,
   },
   moodEmoji: {
     fontSize: 24,
   },
   moodText: {
     fontSize: 16,
-    color: '#F8FAFC',
     fontWeight: '500',
   },
   promptCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#EF4444' + '15',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#EF4444' + '30',
   },
   promptText: {
     flex: 1,
     fontSize: 14,
-    color: '#F8FAFC',
     lineHeight: 20,
   },
   inputContainer: {
@@ -301,22 +386,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F8FAFC',
     marginBottom: 12,
   },
   textInput: {
-    backgroundColor: '#1E293B',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#F8FAFC',
     minHeight: 200,
+    textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   characterCount: {
     fontSize: 12,
-    color: '#64748B',
     textAlign: 'right',
     marginTop: 8,
   },
@@ -326,16 +407,34 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 16,
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  emptyState: {
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
+  },
   recentEntry: {
-    backgroundColor: '#1E293B',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
   },
   recentHeader: {
     flexDirection: 'row',
@@ -350,33 +449,27 @@ const styles = StyleSheet.create({
   },
   recentDateText: {
     fontSize: 12,
-    color: '#94A3B8',
   },
   recentMood: {
     fontSize: 16,
   },
   recentContent: {
     fontSize: 14,
-    color: '#F8FAFC',
     lineHeight: 20,
   },
   tipsCard: {
-    backgroundColor: '#3B82F6' + '15',
     borderRadius: 12,
     padding: 16,
     marginBottom: 40,
     borderWidth: 1,
-    borderColor: '#3B82F6' + '30',
   },
   tipsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3B82F6',
     marginBottom: 12,
   },
   tipsText: {
     fontSize: 14,
-    color: '#F8FAFC',
     lineHeight: 20,
   },
 });

@@ -7,7 +7,7 @@ import Card from '@/components/Card';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { useResponsive } from '@/hooks/useResponsive';
-import { Heart, BookOpen, MapPin, Video, Trophy, Bell } from 'lucide-react-native';
+import { Heart, BookOpen, MapPin, Volume2, Trophy, Bell } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -35,9 +35,9 @@ export default function HomeScreen() {
     },
     {
       id: '3',
-      title: 'AI Video Check-in',
-      description: 'Get personalized support messages',
-      icon: Video,
+      title: 'AI Voice Check-in',
+      description: 'Get personalized voice support messages',
+      icon: Volume2,
       color: colors.accent,
       onPress: () => router.push('/(tabs)/video-checkin'),
     },
@@ -267,7 +267,7 @@ export default function HomeScreen() {
                   🚀 Built with cutting-edge technology:
                 </Text>
                 <Text style={[styles.featuresList, { color: colors.text }]}>
-                  • AI-powered personalized video check-ins{'\n'}
+                  • AI-powered personalized voice check-ins{'\n'}
                   • Voice-enabled emotional support{'\n'}
                   • Blockchain-verified document storage{'\n'}
                   • Real-time emergency alerts{'\n'}

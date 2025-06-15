@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Animated,
-  Dimensions,
-  Alert,
+  Image,
+  TouchableOpacity,
+  useWindowDimensions,
+  ScrollView,
+  Platform,
 } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { BookOpen, Clock, ChartBar as BarChart3, Heart, Sparkles } from 'lucide-react-native';
+import { BookOpen, Clock, ChartBar as BarChart3, Heart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { width } = Dimensions.get('window');
+import BoltBadge from '@/components/BoltBadge';
+import { analyticsService } from '@/services/analyticsService';
 
 type Mood = 'great' | 'good' | 'okay' | 'sad' | 'stressed';
 
@@ -33,13 +35,38 @@ interface WellnessTool {
   icon: React.ComponentType<any>;
   color: string;
   route: string;
+  about: string;
 }
 
 export default function WellnessScreen() {
+  const { colors } = useTheme();
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
+
+  useEffect(() => {
+    // Track screen view
+    analyticsService.trackScreen('wellness');
+    
+    // Load saved mood
+    loadSavedMood();
+    
+    // Animate screen entrance
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const moodOptions: MoodOption[] = [
     {
@@ -86,7 +113,8 @@ export default function WellnessScreen() {
       description: 'Record your thoughts and feelings',
       icon: BookOpen,
       color: '#10B981',
-      route: '/wellness/journal'
+      route: '/wellness/journal',
+      about: 'Journaling helps process emotions and track your recovery journey. Write freely about your experiences, challenges, and victories.'
     },
     {
       id: 'meditation',
@@ -94,7 +122,8 @@ export default function WellnessScreen() {
       description: 'Guided sessions for stress relief',
       icon: Clock,
       color: '#8B5CF6',
-      route: '/wellness/meditation'
+      route: '/wellness/meditation',
+      about: 'Meditation reduces stress and anxiety through guided breathing and mindfulness exercises. Even a few minutes daily can improve mental wellbeing.'
     },
     {
       id: 'mood-tracking',
@@ -102,28 +131,10 @@ export default function WellnessScreen() {
       description: 'Monitor your emotional wellbeing',
       icon: BarChart3,
       color: '#3B82F6',
-      route: '/wellness/mood-tracking'
+      route: '/wellness/mood-tracking',
+      about: 'Tracking your mood helps identify patterns and triggers. Visualize your emotional journey and celebrate improvements over time.'
     }
   ];
-
-  useEffect(() => {
-    loadSavedMood();
-    
-    // Animate screen entrance
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, []);
 
   const loadSavedMood = async () => {
     try {
@@ -133,7 +144,7 @@ export default function WellnessScreen() {
         setSelectedMood(savedMood as Mood);
       }
     } catch (error) {
-      console.error('Error loading saved mood:', error);
+      console.error('Error loading current mood:', error);
     }
   };
 
@@ -162,12 +173,15 @@ export default function WellnessScreen() {
       
       await AsyncStorage.setItem('mood_history', JSON.stringify([newEntry, ...filteredHistory]));
       
+      // Track mood selection in analytics
+      analyticsService.trackEvent('mood_selected', {
+        mood,
+        screen: 'wellness'
+      });
+      
       // Show confirmation
       setShowConfirmation(true);
       setTimeout(() => setShowConfirmation(false), 3000);
-      
-      // TODO: In a real app, also save to Supabase
-      // await saveMoodToSupabase(mood);
       
     } catch (error) {
       console.error('Error saving mood:', error);
@@ -176,47 +190,17 @@ export default function WellnessScreen() {
   };
 
   const handleToolPress = (tool: WellnessTool) => {
-    // For now, we'll show an alert since the routes don't exist yet
-    // In a real implementation, you'd navigate to the actual screens
+    analyticsService.trackEvent('wellness_tool_selected', {
+      tool: tool.id
+    });
     
-    switch (tool.id) {
-      case 'journal':
-        Alert.alert(
-          'Journal',
-          'Opening your personal journal where you can write about your thoughts and feelings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Continue', onPress: () => router.push('/wellness/journal' as any) }
-          ]
-        );
-        break;
-      case 'meditation':
-        Alert.alert(
-          'Meditation',
-          'Access guided meditation sessions and breathing exercises.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Continue', onPress: () => router.push('/wellness/meditation' as any) }
-          ]
-        );
-        break;
-      case 'mood-tracking':
-        Alert.alert(
-          'Mood Tracking',
-          'View your mood history and emotional patterns over time.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Continue', onPress: () => router.push('/wellness/mood-tracking' as any) }
-          ]
-        );
-        break;
-    }
+    router.push(tool.route as any);
   };
 
   const selectedMoodData = selectedMood ? moodOptions.find(m => m.id === selectedMood) : null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <Animated.ScrollView 
         style={[styles.scrollView, { opacity: fadeAnim }]}
         showsVerticalScrollIndicator={false}
@@ -224,8 +208,8 @@ export default function WellnessScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Wellness</Text>
-          <Text style={styles.subtitle}>How are you feeling today?</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Wellness</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>How are you feeling today?</Text>
         </View>
 
         {/* Mood Selection */}
@@ -236,6 +220,10 @@ export default function WellnessScreen() {
                 key={mood.id}
                 style={[
                   styles.moodButton,
+                  { 
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border
+                  },
                   selectedMood === mood.id && { 
                     borderColor: mood.color,
                     borderWidth: 3,
@@ -248,6 +236,7 @@ export default function WellnessScreen() {
                 <Text style={styles.moodEmoji}>{mood.emoji}</Text>
                 <Text style={[
                   styles.moodLabel,
+                  { color: colors.text },
                   selectedMood === mood.id && { color: mood.color, fontWeight: '600' }
                 ]}>
                   {mood.label}
@@ -262,11 +251,11 @@ export default function WellnessScreen() {
               styles.confirmationCard,
               { backgroundColor: selectedMoodData.color + '15', borderColor: selectedMoodData.color }
             ]}>
-              <Sparkles size={20} color={selectedMoodData.color} />
+              <Heart size={20} color={selectedMoodData.color} />
               <Text style={[styles.confirmationText, { color: selectedMoodData.color }]}>
                 Thanks for checking in! You selected "{selectedMoodData.label}"
               </Text>
-              <Text style={styles.confirmationSubtext}>
+              <Text style={[styles.confirmationSubtext, { color: colors.textSecondary }]}>
                 {selectedMoodData.description}
               </Text>
             </Animated.View>
@@ -283,7 +272,7 @@ export default function WellnessScreen() {
                 <Text style={[styles.currentMoodLabel, { color: selectedMoodData.color }]}>
                   Today you're feeling {selectedMoodData.label.toLowerCase()}
                 </Text>
-                <Text style={styles.currentMoodDescription}>
+                <Text style={[styles.currentMoodDescription, { color: colors.textSecondary }]}>
                   {selectedMoodData.description}
                 </Text>
               </View>
@@ -293,8 +282,8 @@ export default function WellnessScreen() {
 
         {/* Wellness Tools */}
         <View style={styles.toolsSection}>
-          <Text style={styles.sectionTitle}>Wellness Tools</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Wellness Tools</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
             Explore tools to support your mental wellbeing
           </Text>
 
@@ -309,30 +298,32 @@ export default function WellnessScreen() {
                 <View style={[styles.toolIconContainer, { backgroundColor: tool.color + '20' }]}>
                   <tool.icon size={28} color={tool.color} />
                 </View>
-                <Text style={styles.toolTitle}>{tool.title}</Text>
-                <Text style={styles.toolDescription}>{tool.description}</Text>
+                <Text style={[styles.toolTitle, { color: colors.text }]}>{tool.title}</Text>
+                <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>{tool.description}</Text>
+                <Text style={[styles.toolAbout, { color: colors.text }]}>{tool.about}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Motivational Quote */}
-        <View style={styles.quoteSection}>
+        <View style={[styles.quoteSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Heart size={24} color="#EF4444" />
-          <Text style={styles.quote}>
+          <Text style={[styles.quote, { color: colors.text }]}>
             "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity."
           </Text>
-          <Text style={styles.quoteAuthor}>— Anonymous</Text>
+          <Text style={[styles.quoteAuthor, { color: colors.textSecondary }]}>— Anonymous</Text>
         </View>
 
         {/* Daily Tip */}
-        <View style={styles.tipSection}>
-          <Text style={styles.tipTitle}>💡 Daily Wellness Tip</Text>
-          <Text style={styles.tipText}>
+        <View style={[styles.tipSection, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+          <Text style={[styles.tipTitle, { color: colors.primary }]}>💡 Daily Wellness Tip</Text>
+          <Text style={[styles.tipText, { color: colors.text }]}>
             Take 5 minutes today to practice deep breathing. Inhale for 4 counts, hold for 4, exhale for 6. This simple technique can help reduce stress and improve focus.
           </Text>
         </View>
       </Animated.ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -340,7 +331,6 @@ export default function WellnessScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
   },
   scrollView: {
     flex: 1,
@@ -357,12 +347,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#94A3B8',
     textAlign: 'center',
   },
   moodSection: {
@@ -375,12 +363,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   moodButton: {
-    width: (width - 80) / 3,
+    width: '30%',
     aspectRatio: 1,
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#334155',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
@@ -392,13 +378,11 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#F8FAFC',
     textAlign: 'center',
   },
   confirmationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
     borderRadius: 12,
     borderWidth: 1,
     padding: 16,
@@ -412,7 +396,6 @@ const styles = StyleSheet.create({
   },
   confirmationSubtext: {
     fontSize: 14,
-    color: '#64748B',
     marginTop: 4,
   },
   currentMoodCard: {
@@ -437,7 +420,6 @@ const styles = StyleSheet.create({
   },
   currentMoodDescription: {
     fontSize: 14,
-    color: '#94A3B8',
   },
   toolsSection: {
     marginBottom: 40,
@@ -445,12 +427,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 16,
-    color: '#94A3B8',
     marginBottom: 24,
   },
   toolsGrid: {
@@ -473,28 +453,32 @@ const styles = StyleSheet.create({
   toolTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#F8FAFC',
     marginBottom: 8,
     textAlign: 'center',
   },
   toolDescription: {
     fontSize: 14,
-    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 12,
+  },
+  toolAbout: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
   },
   quoteSection: {
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#334155',
   },
   quote: {
     fontSize: 16,
-    color: '#F8FAFC',
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 24,
@@ -502,25 +486,21 @@ const styles = StyleSheet.create({
   },
   quoteAuthor: {
     fontSize: 14,
-    color: '#94A3B8',
     fontWeight: '500',
   },
   tipSection: {
-    backgroundColor: '#3B82F6' + '15',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#3B82F6' + '30',
+    marginBottom: 40,
   },
   tipTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3B82F6',
     marginBottom: 12,
   },
   tipText: {
     fontSize: 14,
-    color: '#F8FAFC',
     lineHeight: 22,
   },
 });

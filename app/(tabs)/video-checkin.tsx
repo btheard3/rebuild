@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -17,6 +18,7 @@ import {
   Sparkles,
   Heart,
   Volume2,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { openaiService } from '@/services/openaiService';
 import { elevenLabsService } from '@/services/elevenLabsService';
@@ -98,6 +100,16 @@ export default function VoiceCheckinScreen() {
   const generateAudio = async () => {
     if (!script) return;
 
+    // Check if we're on web platform
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Audio Not Supported on Web',
+        'AI Voice Check-in requires a mobile device. Please use the Expo Go app on your phone or tablet to experience the full audio features.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setIsGenerating(true);
     analyticsService.trackEvent('ai_audio_generation_started', {
       mood: selectedMood,
@@ -127,6 +139,12 @@ export default function VoiceCheckinScreen() {
         mood: selectedMood,
         audio_url: result,
       });
+
+      // Auto-play the generated audio
+      setTimeout(() => {
+        handlePlayPause();
+      }, 500);
+
     } catch (error) {
       console.error('Audio generation failed:', error);
       Alert.alert('Error', 'Failed to generate audio. Please try again.');
@@ -136,6 +154,14 @@ export default function VoiceCheckinScreen() {
   };
 
   const handlePlayPause = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Audio Playback Not Available',
+        'Audio playback is only available on mobile devices. Please use the Expo Go app on your phone.'
+      );
+      return;
+    }
+
     if (audioUrl) {
       if (isPlaying) {
         setIsPlaying(false);
@@ -149,6 +175,7 @@ export default function VoiceCheckinScreen() {
         } catch (error) {
           console.error('Audio playback failed:', error);
           setIsPlaying(false);
+          Alert.alert('Playback Error', 'Unable to play audio. Please try again.');
         }
       }
     }
@@ -209,6 +236,15 @@ export default function VoiceCheckinScreen() {
           Share your thoughts and get a personalized voice message
         </Text>
       </View>
+
+      {Platform.OS === 'web' && (
+        <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
+          <AlertTriangle size={20} color={colors.warning} />
+          <Text style={[styles.warningText, { color: colors.warning }]}>
+            Audio features work best on mobile devices. Use Expo Go on your phone for the full experience.
+          </Text>
+        </View>
+      )}
 
       {renderMoodSelector()}
 
@@ -283,6 +319,15 @@ export default function VoiceCheckinScreen() {
         </Text>
       </View>
 
+      {Platform.OS === 'web' && (
+        <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
+          <AlertTriangle size={20} color={colors.warning} />
+          <Text style={[styles.warningText, { color: colors.warning }]}>
+            Voice generation requires a mobile device. Please use Expo Go on your phone for audio features.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.buttonRow}>
         <TouchableOpacity
           style={[styles.secondaryButton, { borderColor: colors.border }]}
@@ -303,7 +348,7 @@ export default function VoiceCheckinScreen() {
             },
           ]}
           onPress={generateAudio}
-          disabled={isGenerating}
+          disabled={isGenerating || Platform.OS === 'web'}
         >
           {isGenerating ? (
             <ActivityIndicator color="white" />
@@ -337,7 +382,7 @@ export default function VoiceCheckinScreen() {
               Your Personalized Voice Message
             </Text>
             <Text style={[styles.audioDescription, { color: colors.textSecondary }]}>
-              Tap play to listen to your AI-generated voice message
+              {isPlaying ? 'Now playing your AI-generated voice message...' : 'Your message is ready to play'}
             </Text>
             
             <View style={styles.audioControls}>
@@ -426,6 +471,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    gap: 12,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
   moodSection: {
     marginBottom: 32,

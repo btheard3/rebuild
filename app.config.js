@@ -26,8 +26,11 @@ export default {
       favicon: './assets/images/favicon.png',
     },
     extra: {
-      EXPO_PUBLIC_ELEVENLABS_API_KEY:
-        process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
+      // Expose environment variables to the app
+      EXPO_PUBLIC_ELEVENLABS_API_KEY: process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
+      EXPO_PUBLIC_OPENAI_API_KEY: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+      EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     },
     plugins: [
       'expo-router',
@@ -37,6 +40,7 @@ export default {
       'expo-document-picker',
       'expo-file-system',
       'expo-secure-store',
+      'expo-av', // Added for audio playback
     ],
     experiments: {
       typedRoutes: true,
