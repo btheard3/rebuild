@@ -11,15 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  Sparkles,
-  Heart,
-  Volume2,
-  AlertTriangle,
-} from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Sparkles, Heart, Volume2, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import { openaiService } from '@/services/openaiService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { supabaseService } from '@/services/supabaseService';
