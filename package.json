@@ -3,6 +3,13 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
+  "expo": {
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ]
+  },
   "description": "A comprehensive disaster recovery application with AI-powered tools, secure document storage, and personalized support.",
   "keywords": [
     "disaster-recovery",
