@@ -81,7 +81,8 @@
     "react-native-webrtc": "^124.0.4",
     "react-native-webview": "13.13.5",
     "socket.io-client": "^4.7.4",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "expo-audio": "~0.4.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -11,7 +11,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, Play, Pause, RotateCcw, Clock, Heart, Sparkles } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Play,
+  Pause,
+  RotateCcw,
+  Clock,
+  Heart,
+  Sparkles,
+} from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
@@ -28,10 +36,13 @@ interface MeditationSession {
 
 export default function MeditationScreen() {
   const { colors } = useTheme();
-  const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null);
+  const [selectedSession, setSelectedSession] =
+    useState<MeditationSession | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  const [breathingPhase, setBreathingPhase] = useState<
+    'inhale' | 'hold' | 'exhale'
+  >('inhale');
   const [breathingCount, setBreathingCount] = useState(0);
   const [scaleAnim] = useState(new Animated.Value(1));
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -44,7 +55,7 @@ export default function MeditationScreen() {
       description: 'Simple breathing exercise to reduce stress and anxiety',
       duration: 5,
       type: 'breathing',
-      color: '#10B981'
+      color: '#10B981',
     },
     {
       id: '2',
@@ -53,7 +64,8 @@ export default function MeditationScreen() {
       duration: 10,
       type: 'mindfulness',
       color: '#3B82F6',
-      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-relaxing-in-nature-522.mp3'
+      audioUrl:
+        'https://assets.mixkit.co/music/preview/mixkit-relaxing-in-nature-522.mp3',
     },
     {
       id: '3',
@@ -62,7 +74,8 @@ export default function MeditationScreen() {
       duration: 15,
       type: 'body-scan',
       color: '#8B5CF6',
-      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3'
+      audioUrl:
+        'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
     },
     {
       id: '4',
@@ -71,13 +84,14 @@ export default function MeditationScreen() {
       duration: 12,
       type: 'loving-kindness',
       color: '#EF4444',
-      audioUrl: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3'
-    }
+      audioUrl:
+        'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3',
+    },
   ];
 
   useEffect(() => {
     analyticsService.trackScreen('meditation');
-    
+
     return () => {
       // Clean up any playing audio when component unmounts
       if (sound) {
@@ -87,35 +101,38 @@ export default function MeditationScreen() {
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
+    let interval: ReturnType<typeof setInterval>;
+
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft(timeLeft - 1);
+        setTimeLeft((timeLeft) => timeLeft - 1);
       }, 1000);
     } else if (timeLeft === 0 && isActive) {
       setIsActive(false);
       stopAudio();
-      Alert.alert('Session Complete', 'Great job! You\'ve completed your meditation session.');
+      Alert.alert(
+        'Session Complete',
+        "Great job! You've completed your meditation session."
+      );
       analyticsService.trackEvent('meditation_completed', {
         session_id: selectedSession?.id,
         session_title: selectedSession?.title,
-        duration: selectedSession?.duration
+        duration: selectedSession?.duration,
       });
     }
-    
+
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
   useEffect(() => {
-    let breathingInterval: NodeJS.Timeout;
-    
+    let breathingInterval: ReturnType<typeof setInterval>; // ✅ FIXED
+
     if (isActive && selectedSession?.type === 'breathing') {
       breathingInterval = setInterval(() => {
-        setBreathingCount(prev => {
+        setBreathingCount((prev) => {
           const newCount = prev + 1;
           const cycle = newCount % 16; // 4s inhale + 4s hold + 8s exhale = 16s cycle
-          
+
           if (cycle < 4) {
             setBreathingPhase('inhale');
             animateBreathing(1.3);
@@ -126,12 +143,12 @@ export default function MeditationScreen() {
             setBreathingPhase('exhale');
             animateBreathing(0.8);
           }
-          
+
           return newCount;
         });
       }, 1000);
     }
-    
+
     return () => clearInterval(breathingInterval);
   }, [isActive, selectedSession]);
 
@@ -149,13 +166,13 @@ export default function MeditationScreen() {
     setIsActive(true);
     setBreathingCount(0);
     setBreathingPhase('inhale');
-    
+
     analyticsService.trackEvent('meditation_started', {
       session_id: session.id,
       session_title: session.title,
-      session_type: session.type
+      session_type: session.type,
     });
-    
+
     // If there's audio, load and play it
     if (session.audioUrl && Platform.OS !== 'web') {
       try {
@@ -163,18 +180,21 @@ export default function MeditationScreen() {
         if (sound) {
           await sound.unloadAsync();
         }
-        
+
         // Load new audio
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: session.audioUrl },
           { shouldPlay: true, isLooping: true, volume: 0.5 }
         );
-        
+
         setSound(newSound);
         setIsPlaying(true);
       } catch (error) {
         console.error('Failed to load audio:', error);
-        Alert.alert('Audio Error', 'Could not load meditation audio. The session will continue without audio.');
+        Alert.alert(
+          'Audio Error',
+          'Could not load meditation audio. The session will continue without audio.'
+        );
       }
     }
   };
@@ -252,9 +272,11 @@ export default function MeditationScreen() {
 
   if (selectedSession) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => {
               setSelectedSession(null);
@@ -264,7 +286,9 @@ export default function MeditationScreen() {
           >
             <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{selectedSession.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {selectedSession.title}
+          </Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -274,23 +298,30 @@ export default function MeditationScreen() {
             <Text style={[styles.timerText, { color: selectedSession.color }]}>
               {formatTime(timeLeft)}
             </Text>
-            <Text style={[styles.timerLabel, { color: colors.textSecondary }]}>remaining</Text>
+            <Text style={[styles.timerLabel, { color: colors.textSecondary }]}>
+              remaining
+            </Text>
           </View>
 
           {/* Breathing Animation */}
           {selectedSession.type === 'breathing' && (
             <View style={styles.breathingContainer}>
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.breathingCircle,
-                  { 
+                  {
                     backgroundColor: selectedSession.color + '30',
                     borderColor: selectedSession.color,
-                    transform: [{ scale: scaleAnim }]
-                  }
+                    transform: [{ scale: scaleAnim }],
+                  },
                 ]}
               >
-                <Text style={[styles.breathingText, { color: selectedSession.color }]}>
+                <Text
+                  style={[
+                    styles.breathingText,
+                    { color: selectedSession.color },
+                  ]}
+                >
                   {getBreathingInstruction()}
                 </Text>
               </Animated.View>
@@ -302,16 +333,28 @@ export default function MeditationScreen() {
             <Text style={[styles.sessionDescription, { color: colors.text }]}>
               {selectedSession.description}
             </Text>
-            
+
             {selectedSession.type === 'breathing' && (
-              <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-                Follow the circle's movement: inhale as it grows, hold when it pauses, exhale as it shrinks.
+              <Text
+                style={[
+                  styles.instructionText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Follow the circle's movement: inhale as it grows, hold when it
+                pauses, exhale as it shrinks.
               </Text>
             )}
-            
+
             {selectedSession.type !== 'breathing' && (
-              <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-                Find a comfortable position, close your eyes, and focus on your breath. Let the guided audio help you relax.
+              <Text
+                style={[
+                  styles.instructionText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Find a comfortable position, close your eyes, and focus on your
+                breath. Let the guided audio help you relax.
               </Text>
             )}
           </View>
@@ -319,14 +362,20 @@ export default function MeditationScreen() {
           {/* Controls */}
           <View style={styles.controls}>
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: selectedSession.color + '20' }]}
+              style={[
+                styles.controlButton,
+                { backgroundColor: selectedSession.color + '20' },
+              ]}
               onPress={resetSession}
             >
               <RotateCcw size={24} color={selectedSession.color} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.playButton, { backgroundColor: selectedSession.color }]}
+              style={[
+                styles.playButton,
+                { backgroundColor: selectedSession.color },
+              ]}
               onPress={isActive ? pauseSession : resumeSession}
             >
               {isActive ? (
@@ -344,74 +393,121 @@ export default function MeditationScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Meditation</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Meditation
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.introSection}>
           <Sparkles size={32} color={colors.primary} />
-          <Text style={[styles.introTitle, { color: colors.text }]}>Find Your Peace</Text>
+          <Text style={[styles.introTitle, { color: colors.text }]}>
+            Find Your Peace
+          </Text>
           <Text style={[styles.introText, { color: colors.textSecondary }]}>
-            Take a moment to center yourself with guided meditation sessions designed to reduce stress and promote wellbeing.
+            Take a moment to center yourself with guided meditation sessions
+            designed to reduce stress and promote wellbeing.
           </Text>
         </View>
 
         {Platform.OS === 'web' && (
-          <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
-            <Text style={[styles.warningTitle, { color: colors.warning }]}>Audio Limitations</Text>
+          <View
+            style={[
+              styles.warningCard,
+              {
+                backgroundColor: colors.warning + '20',
+                borderColor: colors.warning,
+              },
+            ]}
+          >
+            <Text style={[styles.warningTitle, { color: colors.warning }]}>
+              Audio Limitations
+            </Text>
             <Text style={[styles.warningText, { color: colors.text }]}>
-              For the best meditation experience with audio, please use the Expo Go app on your mobile device. Some audio features may be limited on web.
+              For the best meditation experience with audio, please use the Expo
+              Go app on your mobile device. Some audio features may be limited
+              on web.
             </Text>
           </View>
         )}
 
         <View style={styles.sessionsContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose a Session</Text>
-          
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Choose a Session
+          </Text>
+
           {sessions.map((session) => (
             <TouchableOpacity
               key={session.id}
-              style={[styles.sessionCard, { borderColor: session.color + '30', backgroundColor: colors.surface }]}
+              style={[
+                styles.sessionCard,
+                {
+                  borderColor: session.color + '30',
+                  backgroundColor: colors.surface,
+                },
+              ]}
               onPress={() => startSession(session)}
               activeOpacity={0.8}
             >
-              <View style={[styles.sessionIcon, { backgroundColor: session.color + '20' }]}>
+              <View
+                style={[
+                  styles.sessionIcon,
+                  { backgroundColor: session.color + '20' },
+                ]}
+              >
                 <Clock size={24} color={session.color} />
               </View>
-              
+
               <View style={styles.sessionInfo}>
-                <Text style={[styles.sessionTitle, { color: colors.text }]}>{session.title}</Text>
-                <Text style={[styles.sessionDesc, { color: colors.textSecondary }]}>{session.description}</Text>
-                <Text style={[styles.sessionDuration, { color: session.color }]}>
+                <Text style={[styles.sessionTitle, { color: colors.text }]}>
+                  {session.title}
+                </Text>
+                <Text
+                  style={[styles.sessionDesc, { color: colors.textSecondary }]}
+                >
+                  {session.description}
+                </Text>
+                <Text
+                  style={[styles.sessionDuration, { color: session.color }]}
+                >
                   {session.duration} minutes
                 </Text>
               </View>
-              
-              <View style={[styles.playIcon, { backgroundColor: session.color }]}>
+
+              <View
+                style={[styles.playIcon, { backgroundColor: session.color }]}
+              >
                 <Play size={16} color="white" />
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={[styles.benefitsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.benefitsCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <Heart size={24} color={colors.error} />
-          <Text style={[styles.benefitsTitle, { color: colors.text }]}>Benefits of Meditation</Text>
+          <Text style={[styles.benefitsTitle, { color: colors.text }]}>
+            Benefits of Meditation
+          </Text>
           <Text style={[styles.benefitsText, { color: colors.textSecondary }]}>
-            • Reduces stress and anxiety{'\n'}
-            • Improves focus and concentration{'\n'}
-            • Promotes emotional wellbeing{'\n'}
-            • Enhances self-awareness{'\n'}
-            • Better sleep quality
+            • Reduces stress and anxiety{'\n'}• Improves focus and concentration
+            {'\n'}• Promotes emotional wellbeing{'\n'}• Enhances self-awareness
+            {'\n'}• Better sleep quality
           </Text>
         </View>
       </ScrollView>
