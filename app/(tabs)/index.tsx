@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, SafeAreaView, Animated } from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  Animated,
+} from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
@@ -7,7 +14,14 @@ import Card from '@/components/Card';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { useResponsive } from '@/hooks/useResponsive';
-import { Heart, BookOpen, MapPin, Volume2, Trophy, Bell } from 'lucide-react-native';
+import {
+  Heart,
+  BookOpen,
+  MapPin,
+  Volume2,
+  Trophy,
+  Bell,
+} from 'lucide-react-native';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -39,7 +53,7 @@ export default function HomeScreen() {
       description: 'Get personalized voice support messages',
       icon: Volume2,
       color: colors.accent,
-      onPress: () => router.push('/(tabs)/video-checkin'),
+      onPress: () => router.push('/(tabs)/voice-checkin'),
     },
     {
       id: '4',
@@ -73,7 +87,7 @@ export default function HomeScreen() {
       try {
         // Dynamically import supabase to avoid initialization errors
         const { supabase } = await import('@/services/supabase');
-        
+
         const channel = supabase
           .channel('alerts')
           .on(
@@ -145,33 +159,42 @@ export default function HomeScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: deviceType === 'mobile' ? 40 : 60 }
+          { paddingBottom: deviceType === 'mobile' ? 40 : 60 },
         ]}
         showsVerticalScrollIndicator={false}
       >
         <ResponsiveContainer>
-          <Animated.View style={[{ opacity: fadeAnim }, { marginTop: deviceType === 'mobile' ? 12 : 20 }]}>
+          <Animated.View
+            style={[
+              { opacity: fadeAnim },
+              { marginTop: deviceType === 'mobile' ? 12 : 20 },
+            ]}
+          >
             <View style={styles.header}>
               <View>
-                <Text style={[
-                  styles.greeting, 
-                  { 
-                    color: colors.text,
-                    fontSize: getHeaderFontSize(),
-                  }
-                ]}>
+                <Text
+                  style={[
+                    styles.greeting,
+                    {
+                      color: colors.text,
+                      fontSize: getHeaderFontSize(),
+                    },
+                  ]}
+                >
                   Hello, {user?.name?.split(' ')[0] || 'there'}
                 </Text>
-                <Text style={[
-                  styles.subtitle, 
-                  { 
-                    color: colors.textSecondary,
-                    fontSize: deviceType === 'mobile' ? 16 : 18,
-                  }
-                ]}>
+                <Text
+                  style={[
+                    styles.subtitle,
+                    {
+                      color: colors.textSecondary,
+                      fontSize: deviceType === 'mobile' ? 16 : 18,
+                    },
+                  ]}
+                >
                   Let's continue your recovery journey
                 </Text>
               </View>
@@ -179,14 +202,14 @@ export default function HomeScreen() {
 
             {/* Real-time alerts display */}
             {alerts.map((alert) => (
-              <Animated.View 
-                key={alert.id} 
+              <Animated.View
+                key={alert.id}
                 style={[
-                  styles.alertBanner, 
-                  { 
+                  styles.alertBanner,
+                  {
                     backgroundColor: colors.primaryLight,
                     marginBottom: 16,
-                  }
+                  },
                 ]}
               >
                 <Bell size={16} color={colors.primary} />
@@ -198,27 +221,34 @@ export default function HomeScreen() {
 
             {/* Quick Actions Section */}
             <View style={styles.quickActionsSection}>
-              <Text style={[
-                styles.sectionTitle, 
-                { 
-                  color: colors.text,
-                  fontSize: getSectionTitleSize(),
-                }
-              ]}>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  {
+                    color: colors.text,
+                    fontSize: getSectionTitleSize(),
+                  },
+                ]}
+              >
                 Quick Actions
               </Text>
-              <Text style={[
-                styles.sectionSubtitle, 
-                { 
-                  color: colors.textSecondary,
-                  fontSize: deviceType === 'mobile' ? 16 : 18,
-                  marginBottom: deviceType === 'mobile' ? 20 : 24,
-                }
-              ]}>
+              <Text
+                style={[
+                  styles.sectionSubtitle,
+                  {
+                    color: colors.textSecondary,
+                    fontSize: deviceType === 'mobile' ? 16 : 18,
+                    marginBottom: deviceType === 'mobile' ? 20 : 24,
+                  },
+                ]}
+              >
                 Access your most important recovery tools
               </Text>
-              
-              <ResponsiveGrid minItemWidth={280} gap={deviceType === 'mobile' ? 12 : 16}>
+
+              <ResponsiveGrid
+                minItemWidth={280}
+                gap={deviceType === 'mobile' ? 12 : 16}
+              >
                 {quickActions.map((action) => (
                   <Card
                     key={action.id}
@@ -233,45 +263,58 @@ export default function HomeScreen() {
             </View>
 
             {/* Welcome Message for New Users */}
-            <View style={[
-              styles.welcomeCard, 
-              { 
-                backgroundColor: colors.surface, 
-                borderColor: colors.border,
-                padding: deviceType === 'mobile' ? 20 : 24,
-                marginTop: deviceType === 'mobile' ? 32 : 40,
-              }
-            ]}>
-              <Text style={[
-                styles.welcomeTitle, 
-                { 
-                  color: colors.text,
-                  fontSize: deviceType === 'mobile' ? 20 : 22,
-                }
-              ]}>
+            <View
+              style={[
+                styles.welcomeCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  padding: deviceType === 'mobile' ? 20 : 24,
+                  marginTop: deviceType === 'mobile' ? 32 : 40,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.welcomeTitle,
+                  {
+                    color: colors.text,
+                    fontSize: deviceType === 'mobile' ? 20 : 22,
+                  },
+                ]}
+              >
                 Welcome to Rebuild
               </Text>
-              <Text style={[
-                styles.welcomeText, 
-                { 
-                  color: colors.textSecondary,
-                  fontSize: deviceType === 'mobile' ? 16 : 17,
-                  lineHeight: deviceType === 'mobile' ? 24 : 26,
-                }
-              ]}>
-                Your comprehensive disaster recovery companion. We're here to help you navigate through challenging times with personalized support, resources, and tools designed specifically for your recovery journey.
+              <Text
+                style={[
+                  styles.welcomeText,
+                  {
+                    color: colors.textSecondary,
+                    fontSize: deviceType === 'mobile' ? 16 : 17,
+                    lineHeight: deviceType === 'mobile' ? 24 : 26,
+                  },
+                ]}
+              >
+                Your comprehensive disaster recovery companion. We're here to
+                help you navigate through challenging times with personalized
+                support, resources, and tools designed specifically for your
+                recovery journey.
               </Text>
-              
-              <View style={[styles.featuresHighlight, { backgroundColor: colors.primaryLight, marginTop: 16 }]}>
+
+              <View
+                style={[
+                  styles.featuresHighlight,
+                  { backgroundColor: colors.primaryLight, marginTop: 16 },
+                ]}
+              >
                 <Text style={[styles.featuresTitle, { color: colors.primary }]}>
                   🚀 Built with cutting-edge technology:
                 </Text>
                 <Text style={[styles.featuresList, { color: colors.text }]}>
-                  • AI-powered personalized voice check-ins{'\n'}
-                  • Voice-enabled emotional support{'\n'}
-                  • Blockchain-verified document storage{'\n'}
-                  • Real-time emergency alerts{'\n'}
-                  • Comprehensive recovery planning
+                  • AI-powered personalized voice check-ins{'\n'}• Voice-enabled
+                  emotional support{'\n'}• Blockchain-verified document storage
+                  {'\n'}• Real-time emergency alerts{'\n'}• Comprehensive
+                  recovery planning
                 </Text>
               </View>
             </View>
