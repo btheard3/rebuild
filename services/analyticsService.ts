@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 interface AnalyticsEvent {
   name: string;
   properties: Record<string, any>;
@@ -21,7 +23,7 @@ class AnalyticsService {
   private sessionId: string;
   private userId?: string;
   private config: AnalyticsConfig;
-  private flushTimer?: NodeJS.Timeout;
+  private flushTimer?: ReturnType<typeof setInterval>;
   private retryQueue: AnalyticsEvent[] = [];
 
   constructor() {
@@ -41,14 +43,14 @@ class AnalyticsService {
     try {
       // Check if analytics should be enabled
       this.config.enabled = this.shouldEnableAnalytics();
-      
+
       if (this.config.enabled) {
         this.startFlushTimer();
         console.log('Analytics service initialized');
       } else {
         console.log('Analytics service disabled');
       }
-      
+
       this.isInitialized = true;
     } catch (error) {
       console.warn('Analytics initialization failed:', error);
@@ -59,10 +61,12 @@ class AnalyticsService {
 
   private shouldEnableAnalytics(): boolean {
     // Disable analytics if no URL is configured or it's a placeholder
-    if (!this.apiUrl || 
-        this.apiUrl.includes('your_analytics_api_url_here') || 
-        this.apiUrl.includes('example.com') ||
-        this.apiUrl.includes('localhost')) {
+    if (
+      !this.apiUrl ||
+      this.apiUrl.includes('your_analytics_api_url_here') ||
+      this.apiUrl.includes('example.com') ||
+      this.apiUrl.includes('localhost')
+    ) {
       return false;
     }
 
@@ -94,7 +98,9 @@ class AnalyticsService {
       if (typeof window !== 'undefined' && window.sessionStorage) {
         let sessionId = window.sessionStorage.getItem('analytics_session_id');
         if (!sessionId) {
-          sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          sessionId = `session_${Date.now()}_${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
           window.sessionStorage.setItem('analytics_session_id', sessionId);
         }
         return sessionId;
@@ -102,7 +108,7 @@ class AnalyticsService {
     } catch (error) {
       console.warn('Failed to get/set session ID:', error);
     }
-    
+
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
@@ -134,7 +140,10 @@ class AnalyticsService {
       };
 
       this.events.push(event);
-      console.log('Analytics Event:', { name: eventName, properties: sanitizedProperties });
+      console.log('Analytics Event:', {
+        name: eventName,
+        properties: sanitizedProperties,
+      });
 
       // Auto-flush if batch size is reached
       if (this.events.length >= this.config.batchSize) {
@@ -145,13 +154,24 @@ class AnalyticsService {
     }
   }
 
-  private sanitizeProperties(properties: Record<string, any>): Record<string, any> {
+  private sanitizeProperties(
+    properties: Record<string, any>
+  ): Record<string, any> {
     const sanitized: Record<string, any> = {};
-    const sensitiveKeys = ['password', 'token', 'key', 'secret', 'auth', 'credential'];
+    const sensitiveKeys = [
+      'password',
+      'token',
+      'key',
+      'secret',
+      'auth',
+      'credential',
+    ];
 
     for (const [key, value] of Object.entries(properties)) {
       // Skip sensitive keys
-      if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
+      if (
+        sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))
+      ) {
         continue;
       }
 
@@ -177,38 +197,50 @@ class AnalyticsService {
   trackScreen(screenName: string, properties: Record<string, any> = {}) {
     this.trackEvent('screen_view', {
       screen_name: screenName,
-      ...properties
+      ...properties,
     });
   }
 
-  trackUserAction(action: string, context: string, properties: Record<string, any> = {}) {
+  trackUserAction(
+    action: string,
+    context: string,
+    properties: Record<string, any> = {}
+  ) {
     this.trackEvent('user_action', {
       action,
       context,
-      ...properties
+      ...properties,
     });
   }
 
   trackFeatureUsage(feature: string, properties: Record<string, any> = {}) {
     this.trackEvent('feature_usage', {
       feature,
-      ...properties
+      ...properties,
     });
   }
 
-  trackError(error: string, context: string, properties: Record<string, any> = {}) {
+  trackError(
+    error: string,
+    context: string,
+    properties: Record<string, any> = {}
+  ) {
     this.trackEvent('error', {
       error,
       context,
-      ...properties
+      ...properties,
     });
   }
 
-  trackPerformance(metric: string, value: number, properties: Record<string, any> = {}) {
+  trackPerformance(
+    metric: string,
+    value: number,
+    properties: Record<string, any> = {}
+  ) {
     this.trackEvent('performance', {
       metric,
       value,
-      ...properties
+      ...properties,
     });
   }
 
@@ -273,7 +305,7 @@ class AnalyticsService {
         localStorage.setItem('analytics_consent', consent.toString());
       }
       this.config.enabled = consent;
-      
+
       if (consent && !this.flushTimer) {
         this.startFlushTimer();
       } else if (!consent && this.flushTimer) {
@@ -316,7 +348,7 @@ class AnalyticsService {
       clearInterval(this.flushTimer);
       this.flushTimer = undefined;
     }
-    
+
     // Flush remaining events
     this.flush().catch(console.warn);
   }
@@ -325,7 +357,7 @@ class AnalyticsService {
 export const analyticsService = new AnalyticsService();
 
 // Cleanup on page unload
-if (typeof window !== 'undefined') {
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     analyticsService.cleanup();
   });

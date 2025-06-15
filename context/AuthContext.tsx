@@ -65,10 +65,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isPremium: true, // Set to true for testing
       };
       setUser(newUser);
-      
+
       // Store user data securely
       await secureStoreAdapter.setItem('user_data', JSON.stringify(newUser));
-      await secureStoreAdapter.setItem('auth_token', data.session?.access_token || '');
+      await secureStoreAdapter.setItem(
+        'auth_token',
+        data.session?.access_token || ''
+      );
     }
 
     setIsLoading(false);
@@ -90,11 +93,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isPremium: true, // Set to true for testing
       };
       setUser(newUser);
-      
+
       // Store user data securely
       await secureStoreAdapter.setItem('user_data', JSON.stringify(newUser));
-      await secureStoreAdapter.setItem('auth_token', data.session?.access_token || '');
-      
+      await secureStoreAdapter.setItem(
+        'auth_token',
+        data.session?.access_token || ''
+      );
+
       analyticsService.trackEvent('user_signed_in', { user_id: newUser.id });
     }
 
@@ -103,18 +109,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signOut = async () => {
     setIsLoading(true);
-    
+
     try {
       // Track logout event
       analyticsService.trackEvent('user_signed_out', { user_id: user?.id });
-      
+
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.warn('Supabase signout error:', error);
         // Continue with logout even if Supabase fails
       }
-      
+
       // Clear all stored data
       await Promise.all([
         secureStoreAdapter.deleteItem('user_data'),
@@ -122,28 +128,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         secureStoreAdapter.deleteItem('gamification_data'),
         secureStoreAdapter.deleteItem('analytics_session_id'),
       ]);
-      
+
       // Clear web storage if on web platform
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         try {
           localStorage.clear();
           sessionStorage.clear();
-          
+
           // Clear any cached data
           if ('caches' in window) {
             const cacheNames = await caches.keys();
             await Promise.all(
-              cacheNames.map(cacheName => caches.delete(cacheName))
+              cacheNames.map((cacheName) => caches.delete(cacheName))
             );
           }
         } catch (error) {
           console.warn('Failed to clear web storage:', error);
         }
       }
-      
+
       // Clear user state
       setUser(null);
-      
+
       // Show success message briefly
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         // Create a temporary success message
@@ -164,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           animation: slideIn 0.3s ease-out;
         `;
-        
+
         // Add animation keyframes
         if (!document.querySelector('#logout-animation-styles')) {
           const style = document.createElement('style');
@@ -181,9 +187,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           `;
           document.head.appendChild(style);
         }
-        
+
         document.body.appendChild(successMessage);
-        
+
         // Remove message after 3 seconds
         setTimeout(() => {
           successMessage.style.animation = 'slideOut 0.3s ease-in';
@@ -194,28 +200,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           }, 300);
         }, 3000);
       }
-      
+
       // Prevent browser back button access by replacing history
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         // Replace current history entry to prevent back navigation
         window.history.replaceState(null, '', '/');
-        
+
         // Add a new entry to prevent going back to authenticated pages
         window.history.pushState(null, '', '/');
-        
+
         // Listen for popstate to prevent back navigation
         const preventBack = (e: PopStateEvent) => {
           window.history.pushState(null, '', '/');
         };
-        
-        window.addEventListener('popstate', preventBack);
-        
+
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.removeEventListener('popstate', preventBack);
+        }
+
         // Clean up listener after a short delay
         setTimeout(() => {
           window.removeEventListener('popstate', preventBack);
         }, 1000);
       }
-      
     } catch (error) {
       console.error('Logout error:', error);
       // Even if there's an error, clear the user state
@@ -229,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) return null;
-      
+
       return {
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
@@ -246,7 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user) {
       const updatedUser = { ...user, isPremium };
       setUser(updatedUser);
-      
+
       // Update stored user data
       secureStoreAdapter.setItem('user_data', JSON.stringify(updatedUser));
     }
@@ -257,14 +264,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Try to load from stored data first
       const storedUserData = await secureStoreAdapter.getItem('user_data');
       const storedToken = await secureStoreAdapter.getItem('auth_token');
-      
+
       if (storedUserData && storedToken) {
         const userData = JSON.parse(storedUserData);
         // Ensure premium status is true for testing
         userData.isPremium = true;
         setUser(userData);
       }
-      
+
       // Verify with Supabase
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
@@ -274,16 +281,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(null);
         return;
       }
-      
+
       const currentUser = {
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
         isPremium: true, // Set to true for testing
       };
-      
+
       setUser(currentUser);
-      await secureStoreAdapter.setItem('user_data', JSON.stringify(currentUser));
+      await secureStoreAdapter.setItem(
+        'user_data',
+        JSON.stringify(currentUser)
+      );
     } catch (error) {
       console.error('Failed to load user:', error);
       setUser(null);

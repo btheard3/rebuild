@@ -16,7 +16,8 @@ export type RefreshableData = {
 };
 
 class RefreshService {
-  private refreshIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private refreshIntervals: Map<string, ReturnType<typeof setInterval>> =
+    new Map();
   private refreshConfigs: Map<string, RefreshConfig> = new Map();
   private dataCache: Map<string, RefreshableData> = new Map();
   private listeners: Map<string, Function[]> = new Map();
@@ -67,37 +68,45 @@ class RefreshService {
     config: RefreshConfig
   ) {
     this.refreshConfigs.set(id, config);
-    
+
     // Initial fetch
     this.performRefresh(id, fetchFunction);
-    
+
     // Set up interval based on priority
-    const interval = this.getIntervalForPriority(config.priority, config.interval);
-    
+    const interval = this.getIntervalForPriority(
+      config.priority,
+      config.interval
+    );
+
     const intervalId = setInterval(() => {
       if (this.isOnline) {
         this.performRefresh(id, fetchFunction);
       }
     }, interval);
-    
+
     this.refreshIntervals.set(id, intervalId);
-    
+
     analyticsService.trackEvent('refresh_registered', {
       id,
       priority: config.priority,
-      interval
+      interval,
     });
   }
 
-  private getIntervalForPriority(priority: string, baseInterval: number): number {
+  private getIntervalForPriority(
+    priority: string,
+    baseInterval: number
+  ): number {
     const multipliers = {
-      critical: 0.5,  // Refresh twice as fast
-      high: 0.75,     // Refresh 25% faster
-      medium: 1,      // Use base interval
-      low: 2          // Refresh half as fast
+      critical: 0.5, // Refresh twice as fast
+      high: 0.75, // Refresh 25% faster
+      medium: 1, // Use base interval
+      low: 2, // Refresh half as fast
     };
-    
-    return baseInterval * (multipliers[priority as keyof typeof multipliers] || 1);
+
+    return (
+      baseInterval * (multipliers[priority as keyof typeof multipliers] || 1)
+    );
   }
 
   private async performRefresh(id: string, fetchFunction: () => Promise<any>) {
@@ -105,44 +114,50 @@ class RefreshService {
     if (!config) return;
 
     let attempts = 0;
-    
+
     while (attempts < config.retryAttempts) {
       try {
         const startTime = Date.now();
         const data = await fetchFunction();
         const endTime = Date.now();
-        
+
         const refreshableData: RefreshableData = {
           id,
           lastUpdated: new Date(),
           data,
-          config
+          config,
         };
-        
+
         this.dataCache.set(id, refreshableData);
-        this.emit('data_updated', { id, data, lastUpdated: refreshableData.lastUpdated });
-        
+        this.emit('data_updated', {
+          id,
+          data,
+          lastUpdated: refreshableData.lastUpdated,
+        });
+
         analyticsService.trackEvent('refresh_success', {
           id,
           duration: endTime - startTime,
-          attempts: attempts + 1
+          attempts: attempts + 1,
         });
-        
+
         break;
-      } catch (error) {
+      } catch (error: any) {
         attempts++;
-        
+
         if (attempts >= config.retryAttempts) {
           analyticsService.trackError('refresh_failed', 'RefreshService', {
             id,
             attempts,
-            error: error.message
+            error: error.message,
           });
-          
+
           this.emit('refresh_error', { id, error, attempts });
         } else {
           // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, config.retryDelay * attempts));
+          await new Promise((resolve) =>
+            setTimeout(resolve, config.retryDelay * attempts)
+          );
         }
       }
     }
@@ -166,19 +181,23 @@ class RefreshService {
     if (cached) {
       // Merge real-time update with cached data
       const updatedData = this.mergeRealTimeData(cached.data, data);
-      
+
       const refreshableData: RefreshableData = {
         ...cached,
         data: updatedData,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       };
-      
+
       this.dataCache.set(type, refreshableData);
-      this.emit('realtime_update', { id: type, data: updatedData, update: data });
-      
+      this.emit('realtime_update', {
+        id: type,
+        data: updatedData,
+        update: data,
+      });
+
       analyticsService.trackEvent('realtime_update_received', {
         type,
-        updateType: data.type || 'unknown'
+        updateType: data.type || 'unknown',
       });
     }
   }
@@ -189,7 +208,7 @@ class RefreshService {
         case 'insert':
           return [update.data, ...existingData];
         case 'update':
-          return existingData.map((item: any) => 
+          return existingData.map((item: any) =>
             item.id === update.data.id ? { ...item, ...update.data } : item
           );
         case 'delete':
@@ -198,7 +217,7 @@ class RefreshService {
           return existingData;
       }
     }
-    
+
     return { ...existingData, ...update.data };
   }
 
@@ -259,7 +278,7 @@ class RefreshService {
   private emit(event: string, data: any) {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
-      eventListeners.forEach(callback => callback(data));
+      eventListeners.forEach((callback) => callback(data));
     }
   }
 
