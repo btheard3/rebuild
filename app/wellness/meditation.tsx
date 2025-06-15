@@ -56,6 +56,7 @@ export default function MeditationScreen() {
       duration: 5,
       type: 'breathing',
       color: '#10B981',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
     },
     {
       id: '2',
@@ -64,8 +65,7 @@ export default function MeditationScreen() {
       duration: 10,
       type: 'mindfulness',
       color: '#3B82F6',
-      audioUrl:
-        'https://assets.mixkit.co/music/preview/mixkit-relaxing-in-nature-522.mp3',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
     },
     {
       id: '3',
@@ -74,8 +74,7 @@ export default function MeditationScreen() {
       duration: 15,
       type: 'body-scan',
       color: '#8B5CF6',
-      audioUrl:
-        'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
     },
     {
       id: '4',
@@ -84,8 +83,7 @@ export default function MeditationScreen() {
       duration: 12,
       type: 'loving-kindness',
       color: '#EF4444',
-      audioUrl:
-        'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
     },
   ];
 
