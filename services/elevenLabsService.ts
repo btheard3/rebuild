@@ -178,7 +178,7 @@ class ElevenLabsService {
         this.sound = null;
       }
 
-      // Configure audio session for emergency alerts
+      // Configure audio session for playback
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: true,
@@ -191,7 +191,7 @@ class ElevenLabsService {
         { uri: audioUrl },
         {
           shouldPlay: true,
-          volume: 1.0, // Full volume for emergency alerts
+          volume: 1.0,
           rate: 1.0,
           shouldCorrectPitch: true,
         }

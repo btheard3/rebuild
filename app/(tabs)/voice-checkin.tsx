@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Pause, RotateCcw, Sparkles, Heart, Volume2, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, Sparkles, Heart, Volume2, TriangleAlert as AlertTriangle, ArrowLeft } from 'lucide-react-native';
 import { openaiService } from '@/services/openaiService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { supabaseService } from '@/services/supabaseService';
@@ -19,6 +19,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import BoltBadge from '@/components/BoltBadge';
+import HomeButton from '@/components/HomeButton';
+import { router } from 'expo-router';
 
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
 
@@ -420,6 +422,21 @@ export default function VoiceCheckinScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
+      <HomeButton />
+      
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          AI Voice Check-in
+        </Text>
+        <View style={styles.placeholderButton} />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -437,6 +454,28 @@ export default function VoiceCheckinScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 60,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  placeholderButton: {
+    width: 40,
   },
   scrollView: {
     flex: 1,

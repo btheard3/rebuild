@@ -19,6 +19,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/services/supabaseClient';
 import { analyticsService } from '@/services/analyticsService';
+import BoltBadge from '@/components/BoltBadge';
 
 interface JournalEntry {
   id: string;
@@ -263,6 +264,28 @@ export default function JournalScreen() {
             </Text>
           </View>
 
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveEntryButton,
+              {
+                backgroundColor: content.trim() ? colors.primary : colors.disabled,
+                opacity: isSaving ? 0.7 : 1,
+              },
+            ]}
+            onPress={saveEntry}
+            disabled={!content.trim() || isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <>
+                <Save size={20} color="white" />
+                <Text style={styles.saveEntryButtonText}>Save Journal Entry</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           {/* Recent Entries */}
           <View style={styles.recentSection}>
             <Text style={[styles.recentTitle, { color: colors.text }]}>Recent Entries</Text>
@@ -316,6 +339,7 @@ export default function JournalScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -381,7 +405,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   inputContainer: {
-    marginBottom: 32,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 16,
@@ -400,6 +424,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'right',
     marginTop: 8,
+  },
+  saveEntryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 32,
+    gap: 8,
+  },
+  saveEntryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   recentSection: {
     marginBottom: 32,

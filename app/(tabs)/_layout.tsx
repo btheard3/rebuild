@@ -64,7 +64,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="video-checkin"
+        name="voice-checkin"
         options={{
           title: 'AI Voice',
           tabBarIcon: ({ color, size }) => <Volume2 size={size} color={color} />,

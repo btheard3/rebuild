@@ -1,5 +1,5 @@
 // @services/supabaseService.ts
-import { supabase } from '@/services/supabase';
+import { supabase } from '@/services/supabaseClient';
 
 export const supabaseService = {
   async saveVoiceInteraction({
