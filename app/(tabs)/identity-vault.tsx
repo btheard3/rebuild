@@ -12,6 +12,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Crypto from 'expo-crypto';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -79,18 +80,14 @@ export default function IdentityVaultScreen() {
         userId: user?.id || 'anonymous'
       });
 
-      // Convert string to ArrayBuffer
-      const encoder = new TextEncoder();
-      const dataBuffer = encoder.encode(dataString);
-
-      // Generate SHA-256 hash
-      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+      // Use expo-crypto for secure hashing
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        dataString,
+        { encoding: Crypto.CryptoEncoding.HEX }
+      );
       
-      // Convert hash to hex string
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      return hashHex;
+      return hash;
     } catch (error) {
       console.error('Hash generation failed:', error);
       throw new Error('Failed to generate secure hash');

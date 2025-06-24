@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import { analyticsService } from './analyticsService';
 
 interface UserIdentityData {
@@ -46,18 +47,14 @@ class IdentityVaultService {
       // Convert to string for hashing
       const dataString = JSON.stringify(dataWithMetadata);
       
-      // Use Web Crypto API for secure hashing
-      const encoder = new TextEncoder();
-      const dataBuffer = encoder.encode(dataString);
+      // Use expo-crypto for secure hashing
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        dataString,
+        { encoding: Crypto.CryptoEncoding.HEX }
+      );
       
-      // Generate SHA-256 hash
-      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-      
-      // Convert to hex string
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      return hashHex;
+      return hash;
     } catch (error) {
       console.error('Hash generation failed:', error);
       analyticsService.trackError('hash_generation_failed', 'IdentityVaultService', {
