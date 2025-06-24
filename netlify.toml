@@ -1,5 +1,5 @@
 [build]
-  publish = "dist"
+  publish = "web-build"
   command = "npm run build:web"
 
 [build.environment]
@@ -47,4 +47,4 @@
 [dev]
   command = "npm run dev"
   port = 8081
-  publish = "dist"
+  publish = "web-build"

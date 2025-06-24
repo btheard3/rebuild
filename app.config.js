@@ -42,7 +42,6 @@ export default {
       'expo-file-system',
       'expo-secure-store',
       'expo-av', // Added for audio playback
-      // Removed deprecated expo-av plugin
     ],
     experiments: {
       typedRoutes: true,
