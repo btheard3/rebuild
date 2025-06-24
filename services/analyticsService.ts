@@ -70,6 +70,14 @@ class AnalyticsService {
       return false;
     }
 
+    // Validate URL format
+    try {
+      new URL(this.apiUrl);
+    } catch (error) {
+      console.warn('Invalid analytics API URL format:', this.apiUrl);
+      return false;
+    }
+
     // Check for user consent (you might want to implement a consent mechanism)
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
