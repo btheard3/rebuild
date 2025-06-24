@@ -22,7 +22,6 @@ export default {
       package: 'com.rebuild.disasterrecovery',
     },
     web: {
-      bundler: 'webpack',
       output: 'static',
       favicon: './assets/images/favicon.png',
     },
