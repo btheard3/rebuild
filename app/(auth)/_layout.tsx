@@ -15,6 +15,9 @@ export default function AuthLayout() {
         contentStyle: {
           backgroundColor: colors.background,
         },
+        headerTitleStyle: {
+          fontFamily: 'Inter-Bold',
+        },
       }}
     >
       <Stack.Screen

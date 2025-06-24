@@ -11,6 +11,7 @@ import {
 import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import BoltBadge from '@/components/BoltBadge';
 
 const slides = [
   {
@@ -58,12 +59,6 @@ export default function OnboardingScreen() {
   const handleMomentumScrollEnd = (event: any) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
-
-    // Optional: add back analytics when ready
-    // analyticsService.trackEvent('onboarding_slide_viewed', {
-    //   slide_index: index,
-    //   slide_title: slides[index]?.title,
-    // });
   };
 
   const handleNext = () => {
@@ -88,8 +83,8 @@ export default function OnboardingScreen() {
         resizeMode="cover"
       />
       <View style={styles.textContainer}>
-        <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
+        <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>{item.title}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
           {item.description}
         </Text>
       </View>
@@ -136,7 +131,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.buttonsContainer}>
         <TouchableOpacity onPress={handleSkip}>
-          <Text style={[styles.skipButton, { color: colors.textSecondary }]}>
+          <Text style={[styles.skipButton, { color: colors.textSecondary, fontFamily: 'Inter-Medium' }]}>
             Skip
           </Text>
         </TouchableOpacity>
@@ -144,7 +139,7 @@ export default function OnboardingScreen() {
           style={[styles.nextButton, { backgroundColor: colors.primary }]}
           onPress={handleNext}
         >
-          <Text style={styles.nextButtonText}>
+          <Text style={[styles.nextButtonText, { fontFamily: 'Inter-SemiBold' }]}>
             {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
           </Text>
         </TouchableOpacity>
@@ -169,6 +164,7 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
       />
       {renderPagination()}
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -194,7 +190,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -228,7 +223,6 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     fontSize: 16,
-    fontWeight: '500',
   },
   nextButton: {
     paddingVertical: 12,
@@ -237,7 +231,6 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: 'white',
-    fontWeight: '600',
     fontSize: 16,
   },
 });

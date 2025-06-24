@@ -129,7 +129,7 @@ class AnalyticsService {
         name: eventName,
         properties: {
           ...sanitizedProperties,
-          platform: 'mobile',
+          platform: Platform.OS,
           timestamp: Date.now(),
           sessionId: this.sessionId,
           userId: this.userId,

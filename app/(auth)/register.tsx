@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function RegisterScreen() {
   const { signUp } = useAuth();
@@ -47,24 +48,25 @@ export default function RegisterScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.contentContainer}>
             <View style={styles.headerContainer}>
-              <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Join Rebuild to access all recovery tools</Text>
+              <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>Create Account</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>Join Rebuild to access all recovery tools</Text>
             </View>
 
             {error && (
               <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
-                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: colors.error, fontFamily: 'Inter-Medium' }]}>{error}</Text>
               </View>
             )}
 
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
+                <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Full Name</Text>
                 <TextInput
                   style={[styles.input, { 
                     backgroundColor: colors.surface, 
                     color: colors.text,
-                    borderColor: colors.border
+                    borderColor: colors.border,
+                    fontFamily: 'Inter-Regular'
                   }]}
                   placeholder="Your full name"
                   placeholderTextColor={colors.textSecondary}
@@ -74,12 +76,13 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+                <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Email</Text>
                 <TextInput
                   style={[styles.input, { 
                     backgroundColor: colors.surface, 
                     color: colors.text,
-                    borderColor: colors.border
+                    borderColor: colors.border,
+                    fontFamily: 'Inter-Regular'
                   }]}
                   placeholder="your@email.com"
                   placeholderTextColor={colors.textSecondary}
@@ -91,12 +94,13 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+                <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Password</Text>
                 <TextInput
                   style={[styles.input, { 
                     backgroundColor: colors.surface, 
                     color: colors.text,
-                    borderColor: colors.border
+                    borderColor: colors.border,
+                    fontFamily: 'Inter-Regular'
                   }]}
                   placeholder="Create a password"
                   placeholderTextColor={colors.textSecondary}
@@ -107,12 +111,13 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Confirm Password</Text>
+                <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Confirm Password</Text>
                 <TextInput
                   style={[styles.input, { 
                     backgroundColor: colors.surface, 
                     color: colors.text,
-                    borderColor: colors.border
+                    borderColor: colors.border,
+                    fontFamily: 'Inter-Regular'
                   }]}
                   placeholder="Confirm your password"
                   placeholderTextColor={colors.textSecondary}
@@ -130,22 +135,23 @@ export default function RegisterScreen() {
                 {loading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.buttonText}>Create Account</Text>
+                  <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Create Account</Text>
                 )}
               </TouchableOpacity>
 
               <View style={styles.loginContainer}>
-                <Text style={[styles.loginText, { color: colors.textSecondary }]}>
+                <Text style={[styles.loginText, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity onPress={() => router.back()}>
-                  <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
+                  <Text style={[styles.loginLink, { color: colors.primary, fontFamily: 'Inter-SemiBold' }]}>Sign In</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -171,7 +177,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
@@ -185,7 +190,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    fontWeight: '500',
   },
   formContainer: {
     width: '100%',
@@ -197,7 +201,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
     marginBottom: 8,
   },
   input: {
@@ -218,7 +221,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
   },
   loginContainer: {
     flexDirection: 'row',
@@ -230,6 +232,5 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });

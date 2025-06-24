@@ -12,7 +12,6 @@ import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import Card from '@/components/Card';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   Heart,
@@ -182,6 +181,7 @@ export default function HomeScreen() {
                     {
                       color: colors.text,
                       fontSize: getHeaderFontSize(),
+                      fontFamily: 'Inter-Bold',
                     },
                   ]}
                 >
@@ -193,6 +193,7 @@ export default function HomeScreen() {
                     {
                       color: colors.textSecondary,
                       fontSize: deviceType === 'mobile' ? 16 : 18,
+                      fontFamily: 'Inter-Regular',
                     },
                   ]}
                 >
@@ -214,7 +215,7 @@ export default function HomeScreen() {
                 ]}
               >
                 <Bell size={16} color={colors.primary} />
-                <Text style={[styles.alertText, { color: colors.primary }]}>
+                <Text style={[styles.alertText, { color: colors.primary, fontFamily: 'Inter-Medium' }]}>
                   {alert.message}
                 </Text>
               </Animated.View>
@@ -228,6 +229,7 @@ export default function HomeScreen() {
                   {
                     color: colors.text,
                     fontSize: getSectionTitleSize(),
+                    fontFamily: 'Inter-Bold',
                   },
                 ]}
               >
@@ -240,27 +242,36 @@ export default function HomeScreen() {
                     color: colors.textSecondary,
                     fontSize: deviceType === 'mobile' ? 16 : 18,
                     marginBottom: deviceType === 'mobile' ? 20 : 24,
+                    fontFamily: 'Inter-Regular',
                   },
                 ]}
               >
                 Access your most important recovery tools
               </Text>
 
-              <ResponsiveGrid
-                minItemWidth={280}
-                gap={deviceType === 'mobile' ? 12 : 16}
-              >
+              <View style={styles.cardsGrid}>
                 {quickActions.map((action) => (
-                  <Card
-                    key={action.id}
-                    title={action.title}
-                    description={action.description}
-                    icon={action.icon}
-                    color={action.color}
-                    onPress={action.onPress}
-                  />
+                  <View 
+                    key={action.id} 
+                    style={[
+                      styles.cardWrapper, 
+                      { 
+                        width: deviceType === 'mobile' ? '100%' : 
+                               deviceType === 'tablet' ? '48%' : '32%',
+                        marginBottom: deviceType === 'mobile' ? 12 : 16,
+                      }
+                    ]}
+                  >
+                    <Card
+                      title={action.title}
+                      description={action.description}
+                      icon={action.icon}
+                      color={action.color}
+                      onPress={action.onPress}
+                    />
+                  </View>
                 ))}
-              </ResponsiveGrid>
+              </View>
             </View>
 
             {/* Welcome Message for New Users */}
@@ -281,6 +292,7 @@ export default function HomeScreen() {
                   {
                     color: colors.text,
                     fontSize: deviceType === 'mobile' ? 20 : 22,
+                    fontFamily: 'Inter-Bold',
                   },
                 ]}
               >
@@ -293,6 +305,7 @@ export default function HomeScreen() {
                     color: colors.textSecondary,
                     fontSize: deviceType === 'mobile' ? 16 : 17,
                     lineHeight: deviceType === 'mobile' ? 24 : 26,
+                    fontFamily: 'Inter-Regular',
                   },
                 ]}
               >
@@ -308,10 +321,10 @@ export default function HomeScreen() {
                   { backgroundColor: colors.primaryLight, marginTop: 16 },
                 ]}
               >
-                <Text style={[styles.featuresTitle, { color: colors.primary }]}>
+                <Text style={[styles.featuresTitle, { color: colors.primary, fontFamily: 'Inter-SemiBold' }]}>
                   🚀 Built with cutting-edge technology:
                 </Text>
-                <Text style={[styles.featuresList, { color: colors.text }]}>
+                <Text style={[styles.featuresList, { color: colors.text, fontFamily: 'Inter-Regular' }]}>
                   • AI-powered personalized voice check-ins{'\n'}• Voice-enabled
                   emotional support{'\n'}• Blockchain-verified document storage
                   {'\n'}• Real-time emergency alerts{'\n'}• Comprehensive
@@ -353,17 +366,23 @@ const styles = StyleSheet.create({
   alertText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '500',
   },
   quickActionsSection: {
     marginBottom: 32,
   },
   sectionTitle: {
-    fontWeight: 'bold',
     marginBottom: 4,
   },
   sectionSubtitle: {
     marginBottom: 20,
+  },
+  cardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    marginBottom: 16,
   },
   welcomeCard: {
     borderRadius: 12,
@@ -371,7 +390,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   welcomeTitle: {
-    fontWeight: 'bold',
     marginBottom: 12,
   },
   welcomeText: {
@@ -383,7 +401,6 @@ const styles = StyleSheet.create({
   },
   featuresTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   featuresList: {

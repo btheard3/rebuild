@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
@@ -38,25 +39,33 @@ export default function SignInScreen() {
         style={styles.keyboardAvoid}
       >
         <View style={styles.contentContainer}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={{ uri: 'https://images.pexels.com/photos/3807316/pexels-photo-3807316.jpeg' }} 
+              style={styles.logo}
+            />
+          </View>
+          
           <View style={styles.headerContainer}>
-            <Text style={[styles.title, { color: colors.text }]}>Welcome to Rebuild</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Sign in to access your recovery tools</Text>
+            <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>Welcome to Rebuild</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>Sign in to access your recovery tools</Text>
           </View>
 
           {error && (
             <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
-              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+              <Text style={[styles.errorText, { color: colors.error, fontFamily: 'Inter-Medium' }]}>{error}</Text>
             </View>
           )}
 
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+              <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Email</Text>
               <TextInput
                 style={[styles.input, { 
                   backgroundColor: colors.surface, 
                   color: colors.text,
-                  borderColor: colors.border
+                  borderColor: colors.border,
+                  fontFamily: 'Inter-Regular'
                 }]}
                 placeholder="your@email.com"
                 placeholderTextColor={colors.textSecondary}
@@ -68,12 +77,13 @@ export default function SignInScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+              <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Password</Text>
               <TextInput
                 style={[styles.input, { 
                   backgroundColor: colors.surface, 
                   color: colors.text,
-                  borderColor: colors.border
+                  borderColor: colors.border,
+                  fontFamily: 'Inter-Regular'
                 }]}
                 placeholder="Your password"
                 placeholderTextColor={colors.textSecondary}
@@ -85,7 +95,7 @@ export default function SignInScreen() {
 
             <Link href="/(auth)/forgot-password" asChild>
               <TouchableOpacity style={styles.forgotPasswordContainer}>
-                <Text style={[styles.forgotPassword, { color: colors.primary }]}>Forgot Password?</Text>
+                <Text style={[styles.forgotPassword, { color: colors.primary, fontFamily: 'Inter-Medium' }]}>Forgot Password?</Text>
               </TouchableOpacity>
             </Link>
 
@@ -97,23 +107,24 @@ export default function SignInScreen() {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Sign In</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.registerContainer}>
-              <Text style={[styles.registerText, { color: colors.textSecondary }]}>
+              <Text style={[styles.registerText, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
                 Don't have an account?{' '}
               </Text>
               <Link href="/(auth)/register" asChild>
                 <TouchableOpacity>
-                  <Text style={[styles.registerLink, { color: colors.primary }]}>Sign Up</Text>
+                  <Text style={[styles.registerLink, { color: colors.primary, fontFamily: 'Inter-SemiBold' }]}>Sign Up</Text>
                 </TouchableOpacity>
               </Link>
             </View>
           </View>
         </View>
       </KeyboardAvoidingView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -130,13 +141,21 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
   headerContainer: {
     marginBottom: 32,
     alignItems: 'center',
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
@@ -150,7 +169,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    fontWeight: '500',
   },
   formContainer: {
     width: '100%',
@@ -162,7 +180,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
     marginBottom: 8,
   },
   input: {
@@ -178,7 +195,6 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     fontSize: 14,
-    fontWeight: '500',
   },
   button: {
     height: 50,
@@ -190,7 +206,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
   },
   registerContainer: {
     flexDirection: 'row',
@@ -202,6 +217,5 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });

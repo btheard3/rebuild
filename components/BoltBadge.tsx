@@ -78,7 +78,7 @@ export default function BoltBadge({ position = 'bottom-right', size = 'medium' }
       activeOpacity={0.8}
     >
       <Zap size={sizeStyles.iconSize} color="white" fill="white" />
-      <Text style={[styles.text, { fontSize: sizeStyles.fontSize }]}>
+      <Text style={[styles.text, { fontSize: sizeStyles.fontSize, fontFamily: 'Inter-SemiBold' }]}>
         Built with Bolt
       </Text>
     </TouchableOpacity>
@@ -103,7 +103,6 @@ const styles = StyleSheet.create({
   },
   text: {
     color: 'white',
-    fontWeight: '600',
     marginLeft: 4,
   },
 });

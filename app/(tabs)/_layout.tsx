@@ -29,7 +29,7 @@ export default function TabLayout() {
           borderTopColor: colors.border,
         },
         tabBarLabelStyle: {
-          fontWeight: '500',
+          fontFamily: 'Inter-Medium',
           fontSize: 12,
         },
         headerStyle: {
@@ -37,7 +37,7 @@ export default function TabLayout() {
         },
         headerTintColor: colors.text,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontFamily: 'Inter-Bold',
         },
         headerShadowVisible: false,
       }}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator 
 import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
@@ -32,8 +33,8 @@ export default function ForgotPasswordScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.contentContainer}>
           <View style={[styles.successContainer, { backgroundColor: colors.success + '20' }]}>
-            <Text style={[styles.successTitle, { color: colors.success }]}>Check your email</Text>
-            <Text style={[styles.successText, { color: colors.textSecondary }]}>
+            <Text style={[styles.successTitle, { color: colors.success, fontFamily: 'Inter-Bold' }]}>Check your email</Text>
+            <Text style={[styles.successText, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
               We've sent password reset instructions to {email}. Please check your inbox.
             </Text>
           </View>
@@ -42,9 +43,10 @@ export default function ForgotPasswordScreen() {
             style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={() => router.back()}
           >
-            <Text style={styles.buttonText}>Return to Login</Text>
+            <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Return to Login</Text>
           </TouchableOpacity>
         </View>
+        <BoltBadge />
       </SafeAreaView>
     );
   }
@@ -53,26 +55,27 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>Reset Password</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
             Enter your email address and we'll send you instructions to reset your password.
           </Text>
         </View>
 
         {error && (
           <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
-            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.error, fontFamily: 'Inter-Medium' }]}>{error}</Text>
           </View>
         )}
 
         <View style={styles.formContainer}>
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Email</Text>
+            <Text style={[styles.label, { color: colors.text, fontFamily: 'Inter-Medium' }]}>Email</Text>
             <TextInput
               style={[styles.input, { 
                 backgroundColor: colors.surface, 
                 color: colors.text,
-                borderColor: colors.border
+                borderColor: colors.border,
+                fontFamily: 'Inter-Regular'
               }]}
               placeholder="your@email.com"
               placeholderTextColor={colors.textSecondary}
@@ -91,7 +94,7 @@ export default function ForgotPasswordScreen() {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.buttonText}>Send Reset Instructions</Text>
+              <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Send Reset Instructions</Text>
             )}
           </TouchableOpacity>
 
@@ -99,10 +102,11 @@ export default function ForgotPasswordScreen() {
             style={styles.backContainer}
             onPress={() => router.back()}
           >
-            <Text style={[styles.backText, { color: colors.textSecondary }]}>Back to Login</Text>
+            <Text style={[styles.backText, { color: colors.textSecondary, fontFamily: 'Inter-Medium' }]}>Back to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
@@ -121,7 +125,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
@@ -134,7 +137,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    fontWeight: '500',
   },
   successContainer: {
     padding: 16,
@@ -144,7 +146,6 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 8,
   },
   successText: {
@@ -162,7 +163,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
     marginBottom: 8,
   },
   input: {
@@ -182,13 +182,11 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
   },
   backContainer: {
     alignItems: 'center',
   },
   backText: {
     fontSize: 14,
-    fontWeight: '500',
   },
 });

@@ -121,6 +121,7 @@ export default function Card({
           { 
             color: colors.text,
             fontSize: getTitleSize(),
+            fontFamily: 'Inter-SemiBold',
           }
         ]}>
           {title}
@@ -131,6 +132,7 @@ export default function Card({
             color: colors.textSecondary,
             fontSize: getDescriptionSize(),
             lineHeight: getDescriptionSize() * 1.4,
+            fontFamily: 'Inter-Regular',
           }
         ]}>
           {description}
@@ -165,7 +167,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontWeight: '600',
     marginBottom: 4,
     textAlign: 'center',
   },

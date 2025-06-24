@@ -19,7 +19,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import BoltBadge from '@/components/BoltBadge';
-import HomeButton from '@/components/HomeButton';
 import { router } from 'expo-router';
 
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
@@ -186,7 +185,7 @@ export default function VoiceCheckinScreen() {
 
   const renderMoodSelector = () => (
     <View style={styles.moodSection}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: 'Inter-SemiBold' }]}>
         How are you feeling today?
       </Text>
       <View style={styles.moodGrid}>
@@ -208,7 +207,10 @@ export default function VoiceCheckinScreen() {
             <Text
               style={[
                 styles.moodLabel,
-                { color: selectedMood === mood.id ? mood.color : colors.text },
+                { 
+                  color: selectedMood === mood.id ? mood.color : colors.text,
+                  fontFamily: 'Inter-Medium'
+                },
               ]}
             >
               {mood.label}
@@ -223,10 +225,10 @@ export default function VoiceCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <Sparkles size={32} color={colors.primary} />
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>
           AI Voice Check-in
         </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
           Share your thoughts and get a personalized voice message
         </Text>
       </View>
@@ -234,7 +236,7 @@ export default function VoiceCheckinScreen() {
       {Platform.OS === 'web' && (
         <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
           <AlertTriangle size={20} color={colors.warning} />
-          <Text style={[styles.warningText, { color: colors.warning }]}>
+          <Text style={[styles.warningText, { color: colors.warning, fontFamily: 'Inter-Medium' }]}>
             Audio features work best on mobile devices. Use Expo Go on your phone for the full experience.
           </Text>
         </View>
@@ -243,7 +245,7 @@ export default function VoiceCheckinScreen() {
       {renderMoodSelector()}
 
       <View style={styles.inputSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: 'Inter-SemiBold' }]}>
           What's on your mind?
         </Text>
         <TextInput
@@ -253,6 +255,7 @@ export default function VoiceCheckinScreen() {
               backgroundColor: colors.surface,
               color: colors.text,
               borderColor: colors.border,
+              fontFamily: 'Inter-Regular'
             },
           ]}
           placeholder="Share your thoughts, feelings, or what happened today..."
@@ -283,7 +286,7 @@ export default function VoiceCheckinScreen() {
         ) : (
           <>
             <Sparkles size={20} color="white" />
-            <Text style={styles.buttonText}>Generate Personalized Script</Text>
+            <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Generate Personalized Script</Text>
           </>
         )}
       </TouchableOpacity>
@@ -294,10 +297,10 @@ export default function VoiceCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <Heart size={32} color={colors.success} />
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>
           Your Personalized Script
         </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
           AI-generated based on your thoughts and mood
         </Text>
       </View>
@@ -308,7 +311,7 @@ export default function VoiceCheckinScreen() {
           { backgroundColor: colors.surface, borderColor: colors.border },
         ]}
       >
-        <Text style={[styles.scriptText, { color: colors.text }]}>
+        <Text style={[styles.scriptText, { color: colors.text, fontFamily: 'Inter-Regular' }]}>
           {script}
         </Text>
       </View>
@@ -316,7 +319,7 @@ export default function VoiceCheckinScreen() {
       {Platform.OS === 'web' && (
         <View style={[styles.warningCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
           <AlertTriangle size={20} color={colors.warning} />
-          <Text style={[styles.warningText, { color: colors.warning }]}>
+          <Text style={[styles.warningText, { color: colors.warning, fontFamily: 'Inter-Medium' }]}>
             Voice generation requires a mobile device. Please use Expo Go on your phone for audio features.
           </Text>
         </View>
@@ -327,7 +330,7 @@ export default function VoiceCheckinScreen() {
           style={[styles.secondaryButton, { borderColor: colors.border }]}
           onPress={() => setStep('input')}
         >
-          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+          <Text style={[styles.secondaryButtonText, { color: colors.text, fontFamily: 'Inter-Medium' }]}>
             Edit Input
           </Text>
         </TouchableOpacity>
@@ -349,7 +352,7 @@ export default function VoiceCheckinScreen() {
           ) : (
             <>
               <Volume2 size={20} color="white" />
-              <Text style={styles.buttonText}>Generate AI Voice Message</Text>
+              <Text style={[styles.buttonText, { fontFamily: 'Inter-SemiBold' }]}>Generate AI Voice Message</Text>
             </>
           )}
         </TouchableOpacity>
@@ -361,10 +364,10 @@ export default function VoiceCheckinScreen() {
     <View style={styles.stepContainer}>
       <View style={styles.headerSection}>
         <Volume2 size={32} color={colors.accent} />
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: colors.text, fontFamily: 'Inter-Bold' }]}>
           Your AI Voice Message
         </Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
           Personalized voice message just for you
         </Text>
       </View>
@@ -372,10 +375,10 @@ export default function VoiceCheckinScreen() {
       {audioUrl && (
         <View style={styles.audioContainer}>
           <View style={[styles.audioPlayer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.audioTitle, { color: colors.text }]}>
+            <Text style={[styles.audioTitle, { color: colors.text, fontFamily: 'Inter-SemiBold' }]}>
               Your Personalized Voice Message
             </Text>
-            <Text style={[styles.audioDescription, { color: colors.textSecondary }]}>
+            <Text style={[styles.audioDescription, { color: colors.textSecondary, fontFamily: 'Inter-Regular' }]}>
               {isPlaying ? 'Now playing your AI-generated voice message...' : 'Your message is ready to play'}
             </Text>
             
@@ -411,7 +414,7 @@ export default function VoiceCheckinScreen() {
         style={[styles.secondaryButton, { borderColor: colors.border }]}
         onPress={resetFlow}
       >
-        <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+        <Text style={[styles.secondaryButtonText, { color: colors.text, fontFamily: 'Inter-Medium' }]}>
           Create Another Voice Message
         </Text>
       </TouchableOpacity>
@@ -422,8 +425,6 @@ export default function VoiceCheckinScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <HomeButton />
-      
       <View style={styles.header}>
         <TouchableOpacity 
           style={[styles.backButton, { backgroundColor: colors.surface }]}
@@ -431,7 +432,7 @@ export default function VoiceCheckinScreen() {
         >
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: 'Inter-Bold' }]}>
           AI Voice Check-in
         </Text>
         <View style={styles.placeholderButton} />
@@ -461,7 +462,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginTop: 60,
   },
   backButton: {
     width: 40,
@@ -472,7 +472,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
   },
   placeholderButton: {
     width: 40,
@@ -493,7 +492,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
@@ -522,7 +520,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
     marginBottom: 16,
   },
   moodGrid: {
@@ -546,7 +543,6 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontSize: 12,
-    fontWeight: '600',
     textAlign: 'center',
   },
   inputSection: {
@@ -579,11 +575,9 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
   },
   secondaryButtonText: {
     fontSize: 14,
-    fontWeight: '500',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -611,7 +605,6 @@ const styles = StyleSheet.create({
   },
   audioTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     marginBottom: 8,
     textAlign: 'center',
   },
