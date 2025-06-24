@@ -86,7 +86,7 @@ export default function HomeScreen() {
     const initializeSupabase = async () => {
       try {
         // Dynamically import supabase to avoid initialization errors
-        const { supabase } = await import('@/services/supabase');
+        const { supabase } = await import('@/services/supabaseClient');
 
         const channel = supabase
           .channel('alerts')
