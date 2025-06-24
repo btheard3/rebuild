@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import { useEffect } from 'react';
-import { Chrome as Home, Search, MapPin, Bell, User, Volume2, Trophy, Shield, Video } from 'lucide-react-native';
+import { Chrome as Home, Search, MapPin, Bell, User, Volume2, Trophy } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
@@ -71,24 +71,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="video-checkin"
-        options={{
-          title: 'AI Video',
-          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="achievements"
         options={{
           title: 'Progress',
           tabBarIcon: ({ color, size }) => <Trophy size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="identity-vault"
-        options={{
-          title: 'Identity',
-          tabBarIcon: ({ color, size }) => <Shield size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -113,12 +99,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="resources"
-        options={{
-          href: null, // Hide from tab bar but keep accessible
-        }}
-      />
-      <Tabs.Screen
-        name="video-history"
         options={{
           href: null, // Hide from tab bar but keep accessible
         }}
