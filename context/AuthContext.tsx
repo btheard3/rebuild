@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '@/services/supabaseClient';
-import { revenueCatService } from '@/services/revenueCatService';
 import { analyticsService } from '@/services/analyticsService';
 
 type User = {
@@ -62,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name,
         email: data.user.email!,
-        isPremium: true, // Set to true for testing
+        isPremium: true, // All users have premium access
       };
       setUser(newUser);
 
@@ -90,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: true, // Set to true for testing
+        isPremium: true, // All users have premium access
       };
       setUser(newUser);
 
@@ -241,7 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: true, // Set to true for testing
+        isPremium: true, // All users have premium access
       };
     } catch (error) {
       console.error('Failed to get current user:', error);
@@ -251,7 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updatePremiumStatus = (isPremium: boolean) => {
     if (user) {
-      const updatedUser = { ...user, isPremium };
+      const updatedUser = { ...user, isPremium: true }; // Always premium
       setUser(updatedUser);
 
       // Update stored user data
@@ -267,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (storedUserData && storedToken) {
         const userData = JSON.parse(storedUserData);
-        // Ensure premium status is true for testing
+        // Ensure premium status is true
         userData.isPremium = true;
         setUser(userData);
       }
@@ -286,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
         email: data.user.email!,
-        isPremium: true, // Set to true for testing
+        isPremium: true, // All users have premium access
       };
 
       setUser(currentUser);
@@ -302,14 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const initializeAuth = async () => {
-      await revenueCatService.initialize();
       await loadUser();
-
-      revenueCatService.onCustomerInfoUpdated((customerInfo) => {
-        const isPremium =
-          customerInfo.entitlements.active['premium'] !== undefined;
-        updatePremiumStatus(isPremium);
-      });
     };
 
     initializeAuth().finally(() => setIsLoading(false));

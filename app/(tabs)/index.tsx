@@ -22,6 +22,7 @@ import {
   Trophy,
   Bell,
 } from 'lucide-react-native';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -321,6 +322,7 @@ export default function HomeScreen() {
           </Animated.View>
         </ResponsiveContainer>
       </ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }

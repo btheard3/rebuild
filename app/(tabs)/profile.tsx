@@ -17,8 +17,6 @@ import {
   Lock,
   CircleHelp as HelpCircle,
   LogOut,
-  CreditCard,
-  Crown,
   Contrast,
 } from 'lucide-react-native';
 
@@ -28,7 +26,6 @@ import { useGamification } from '@/context/GamificationContext';
 import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { analyticsService } from '@/services/analyticsService';
 import BoltBadge from '@/components/BoltBadge';
-import PaywallScreen from '@/components/PaywallScreen';
 
 type SettingItem = {
   id: string;
@@ -51,7 +48,6 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { data: gamificationData } = useGamification();
   const { deviceType } = useResponsive();
-  const [showPaywall, setShowPaywall] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const padding = getResponsiveValue(16, 24, 32)(deviceType);
@@ -88,14 +84,6 @@ export default function ProfileScreen() {
       color: colors.accent,
     },
     {
-      id: 'subscription',
-      title: 'Premium Subscription',
-      icon: CreditCard,
-      type: 'link',
-      route: '/profile/subscription',
-      color: colors.success,
-    },
-    {
       id: 'security',
       title: 'Security & Privacy',
       icon: Lock,
@@ -126,17 +114,6 @@ export default function ProfileScreen() {
       });
     } else {
       analyticsService.trackEvent('setting_toggled', { setting: id });
-    }
-  };
-
-  const handleSubscriptionPress = () => {
-    if (user?.isPremium) {
-      Alert.alert('Premium Subscription', 'You are subscribed to Premium.');
-    } else {
-      setShowPaywall(true);
-      analyticsService.trackEvent('profile_subscription_pressed', {
-        user_premium: false,
-      });
     }
   };
 
@@ -192,30 +169,6 @@ export default function ProfileScreen() {
               >
                 {user?.email}
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.subscriptionBadge,
-                  {
-                    backgroundColor: user?.isPremium
-                      ? colors.warning + '20'
-                      : colors.primaryLight,
-                  },
-                ]}
-                onPress={handleSubscriptionPress}
-              >
-                {user?.isPremium && <Crown size={14} color={colors.warning} />}
-                <Text
-                  style={[
-                    styles.subscriptionText,
-                    {
-                      color: user?.isPremium ? colors.warning : colors.primary,
-                      marginLeft: user?.isPremium ? 4 : 0,
-                    },
-                  ]}
-                >
-                  {user?.isPremium ? 'Premium Member' : 'Free Plan'}
-                </Text>
-              </TouchableOpacity>
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.primary }]}>
@@ -286,8 +239,6 @@ export default function ProfileScreen() {
                   onPress={() => {
                     if (setting.type === 'toggle') {
                       handleToggle(setting.id);
-                    } else if (setting.id === 'subscription') {
-                      handleSubscriptionPress();
                     } else if (setting.route) {
                       analyticsService.trackUserAction(
                         'setting_link_pressed',
@@ -358,11 +309,6 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
-
-      <PaywallScreen
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-      />
       <BoltBadge />
     </SafeAreaView>
   );
@@ -396,19 +342,6 @@ const styles = StyleSheet.create({
   profileEmail: {
     fontSize: 14,
     marginBottom: 8,
-  },
-  subscriptionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  subscriptionText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',

@@ -3,105 +3,229 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, A
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/context/GamificationContext';
-import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
+import { useResponsive } from '@/hooks/useResponsive';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyticsService } from '@/services/analyticsService';
 import { algorandService } from '@/services/algorandService';
 import { supabase } from '@/services/supabaseClient';
-import { Search, Filter, FolderPlus, FileText, Image as ImageIcon, Shield, Crown, Camera, X } from 'lucide-react-native';
-import * as DocumentPicker from 'expo-document-picker';
+import { Search, Filter, FolderPlus, FileText, Image as ImageIcon, Shield, Camera, X } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
-import PaywallScreen from '@/components/PaywallScreen';
 import CameraCapture from '@/components/CameraCapture';
 
-type ResourceCategory = 'All' | 'Documents' | 'Images' | 'Insurance' | 'Medical' | 'Legal';
+type ResourceCategory = 'all' | 'emergency' | 'financial' | 'housing' | 'medical' | 'legal' | 'mental-health' | 'food' | 'utilities';
 
-type ResourceItem = {
+type Resource = {
   id: string;
-  name: string;
-  dateAdded: string;
-  type: 'document' | 'image';
-  category: Exclude<ResourceCategory, 'All'>;
-  size: string;
-  uri?: string;
-  previewUrl?: string;
-  blockchainHash?: string;
-  verified?: boolean;
+  title: string;
+  description: string;
+  category: Exclude<ResourceCategory, 'all'>;
+  type: 'hotline' | 'website' | 'location' | 'program';
+  contact?: {
+    phone?: string;
+    website?: string;
+    address?: string;
+  };
+  hours?: string;
+  rating: number;
+  isFavorite: boolean;
+  image: string;
+  tags: string[];
+  eligibility?: string;
+  languages?: string[];
 };
 
 export default function ResourcesScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { addPoints, completeAchievement } = useGamification();
-  const { deviceType } = useResponsive();
+  const { deviceType, padding } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('All');
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('all');
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showCamera, setShowCamera] = useState(false);
   const [verifyingDocument, setVerifyingDocument] = useState<string | null>(null);
 
-  const getPadding = getResponsiveValue(16, 24, 32);
-  const getMaxWidth = getResponsiveValue('100%', 800, 1000);
-  const getNumColumns = getResponsiveValue(1, 2, 3);
-  
-  const padding = getPadding(deviceType);
-  const maxWidth = getMaxWidth(deviceType);
-  const numColumns = getNumColumns(deviceType);
+  const [moodHistory, setMoodHistory] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     analyticsService.trackScreen('resources');
     loadResources();
   }, []);
 
-  const [resources, setResources] = useState<ResourceItem[]>([
+  const [resources, setResources] = useState<Resource[]>([
     {
       id: '1',
-      name: 'Insurance Policy.pdf',
-      dateAdded: '2025-02-10',
-      type: 'document',
-      category: 'Insurance',
-      size: '2.3 MB',
-      previewUrl: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
-      verified: false,
+      title: 'FEMA Disaster Relief',
+      description: 'Federal assistance for disaster survivors including temporary housing, home repairs, and other disaster-related expenses.',
+      category: 'emergency',
+      type: 'program',
+      contact: {
+        phone: '1-800-621-3362',
+        website: 'https://www.fema.gov',
+      },
+      hours: '24/7',
+      rating: 4.2,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
+      tags: ['federal', 'housing', 'repairs', 'financial'],
+      eligibility: 'Disaster survivors in declared disaster areas',
+      languages: ['English', 'Spanish', 'ASL'],
     },
     {
       id: '2',
-      name: 'Home Damage Photos',
-      dateAdded: '2025-02-15',
-      type: 'image',
-      category: 'Insurance',
-      size: '4.7 MB',
-      previewUrl: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
-      verified: false,
+      title: 'Red Cross Emergency Shelter',
+      description: 'Immediate shelter, food, and emergency supplies for disaster victims and their families.',
+      category: 'emergency',
+      type: 'location',
+      contact: {
+        phone: '1-800-733-2767',
+        website: 'https://www.redcross.org',
+        address: '1234 Relief Center Dr, Community City',
+      },
+      hours: '24/7',
+      rating: 4.8,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
+      tags: ['shelter', 'food', 'supplies', 'immediate'],
+      eligibility: 'All disaster victims',
+      languages: ['English', 'Spanish', 'French'],
     },
     {
       id: '3',
-      name: 'Medical Records.pdf',
-      dateAdded: '2025-01-22',
-      type: 'document',
-      category: 'Medical',
-      size: '1.8 MB',
-      previewUrl: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
-      verified: true,
-      blockchainHash: 'abc123def456',
+      title: 'Disaster Financial Assistance',
+      description: 'Low-interest loans and grants for disaster recovery, home repairs, and business restoration.',
+      category: 'financial',
+      type: 'program',
+      contact: {
+        phone: '1-800-659-2955',
+        website: 'https://www.sba.gov/disaster',
+      },
+      hours: 'Mon-Fri 8am-8pm EST',
+      rating: 4.0,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
+      tags: ['loans', 'grants', 'business', 'recovery'],
+      eligibility: 'Property owners and renters in disaster areas',
+      languages: ['English', 'Spanish'],
     },
     {
       id: '4',
-      name: 'Property Deed.pdf',
-      dateAdded: '2025-01-05',
-      type: 'document',
-      category: 'Legal',
-      size: '3.2 MB',
-      previewUrl: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
-      verified: false,
+      title: 'Community Housing Solutions',
+      description: 'Temporary and transitional housing assistance for families displaced by disasters.',
+      category: 'housing',
+      type: 'program',
+      contact: {
+        phone: '(555) 123-4567',
+        website: 'https://communityhousing.org',
+        address: '789 Housing Ave, Safe Harbor',
+      },
+      hours: 'Mon-Fri 9am-5pm',
+      rating: 4.5,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
+      tags: ['temporary', 'transitional', 'families', 'displacement'],
+      eligibility: 'Families with children, elderly, disabled',
+      languages: ['English', 'Spanish', 'Mandarin'],
+    },
+    {
+      id: '5',
+      title: 'Crisis Mental Health Hotline',
+      description: '24/7 mental health support for disaster survivors experiencing trauma, anxiety, or depression.',
+      category: 'mental-health',
+      type: 'hotline',
+      contact: {
+        phone: '988',
+        website: 'https://988lifeline.org',
+      },
+      hours: '24/7',
+      rating: 4.7,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
+      tags: ['crisis', 'trauma', 'anxiety', 'depression', 'counseling'],
+      eligibility: 'Anyone in crisis',
+      languages: ['English', 'Spanish', '150+ languages via interpreter'],
+    },
+    {
+      id: '6',
+      title: 'Mobile Medical Clinic',
+      description: 'Free medical care, prescription assistance, and health screenings for disaster survivors.',
+      category: 'medical',
+      type: 'location',
+      contact: {
+        phone: '(555) 987-6543',
+        address: 'Various locations - call for schedule',
+      },
+      hours: 'Mon-Sat 8am-6pm',
+      rating: 4.3,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg',
+      tags: ['mobile', 'free', 'prescriptions', 'screenings'],
+      eligibility: 'Uninsured and underinsured individuals',
+      languages: ['English', 'Spanish', 'Creole'],
+    },
+    {
+      id: '7',
+      title: 'Legal Aid Society',
+      description: 'Free legal assistance for disaster-related issues including insurance claims, FEMA appeals, and housing rights.',
+      category: 'legal',
+      type: 'program',
+      contact: {
+        phone: '(555) 456-7890',
+        website: 'https://legalaid.org',
+        address: '456 Justice Blvd, Legal District',
+      },
+      hours: 'Mon-Fri 9am-5pm',
+      rating: 4.1,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699479/pexels-photo-5699479.jpeg',
+      tags: ['insurance', 'FEMA', 'appeals', 'housing', 'rights'],
+      eligibility: 'Low-income disaster survivors',
+      languages: ['English', 'Spanish', 'ASL'],
+    },
+    {
+      id: '8',
+      title: 'Community Food Bank',
+      description: 'Emergency food assistance, hot meals, and nutrition programs for disaster-affected families.',
+      category: 'food',
+      type: 'location',
+      contact: {
+        phone: '(555) 234-5678',
+        address: '321 Nutrition St, Food District',
+      },
+      hours: 'Mon-Fri 10am-4pm, Sat 9am-2pm',
+      rating: 4.6,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg',
+      tags: ['emergency', 'hot meals', 'nutrition', 'families'],
+      eligibility: 'Anyone in need',
+      languages: ['English', 'Spanish', 'Vietnamese'],
+    },
+    {
+      id: '9',
+      title: 'Utility Assistance Program',
+      description: 'Help with electricity, gas, water, and internet bills for disaster survivors facing financial hardship.',
+      category: 'utilities',
+      type: 'program',
+      contact: {
+        phone: '(555) 345-6789',
+        website: 'https://utilityhelp.org',
+      },
+      hours: 'Mon-Fri 8am-6pm',
+      rating: 3.9,
+      isFavorite: false,
+      image: 'https://images.pexels.com/photos/5699398/pexels-photo-5699398.jpeg',
+      tags: ['electricity', 'gas', 'water', 'internet', 'bills'],
+      eligibility: 'Low to moderate income households',
+      languages: ['English', 'Spanish'],
     },
   ]);
 
-  const categories: ResourceCategory[] = ['All', 'Documents', 'Images', 'Insurance', 'Medical', 'Legal'];
-
-  const filteredResources = resources.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+  const filteredResources = resources.filter(resource => {
+    const matchesSearch = resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          resource.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          resource.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'all' || resource.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -137,7 +261,7 @@ export default function ResourcesScreen() {
     }
   };
 
-  const saveResourceToSupabase = async (resource: Omit<ResourceItem, 'id'>) => {
+  const saveResourceToSupabase = async (resource: Omit<any, 'id'>) => {
     try {
       if (user) {
         const { data, error } = await supabase
@@ -179,7 +303,7 @@ export default function ResourcesScreen() {
         return;
       }
 
-      const newDocument: ResourceItem = {
+      const newDocument = {
         id: Date.now().toString(),
         name: result.assets[0].name,
         dateAdded: new Date().toISOString().split('T')[0],
@@ -222,7 +346,7 @@ export default function ResourcesScreen() {
   const handleCameraCapture = async (imageUri: string) => {
     try {
       const fileName = `damage_photo_${Date.now()}.jpg`;
-      const newImage: ResourceItem = {
+      const newImage = {
         id: Date.now().toString(),
         name: fileName,
         dateAdded: new Date().toISOString().split('T')[0],
@@ -258,12 +382,6 @@ export default function ResourcesScreen() {
   };
 
   const handleVerifyOnBlockchain = async (resourceId: string) => {
-    if (!user?.isPremium) {
-      setShowPaywall(true);
-      analyticsService.trackEvent('resources_paywall_shown', { feature: 'blockchain_verification' });
-      return;
-    }
-
     const resource = resources.find(r => r.id === resourceId);
     if (!resource) return;
 
@@ -322,53 +440,71 @@ export default function ResourcesScreen() {
     }
   };
 
-  const renderCategoryChip = (category: ResourceCategory) => {
-    const isSelected = category === selectedCategory;
+  const toggleFavorite = (resourceId: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(resourceId)) {
+      newFavorites.delete(resourceId);
+    } else {
+      newFavorites.add(resourceId);
+    }
+    setFavorites(newFavorites);
+  };
+
+  const categories = [
+    { id: 'all', label: 'All Resources', icon: '🏠' },
+    { id: 'emergency', label: 'Emergency', icon: '🚨' },
+    { id: 'financial', label: 'Financial Aid', icon: '💰' },
+    { id: 'housing', label: 'Housing', icon: '🏘️' },
+    { id: 'medical', label: 'Medical', icon: '🏥' },
+    { id: 'legal', label: 'Legal Aid', icon: '⚖️' },
+    { id: 'mental-health', label: 'Mental Health', icon: '🧠' },
+    { id: 'food', label: 'Food Assistance', icon: '🍽️' },
+    { id: 'utilities', label: 'Utilities', icon: '⚡' },
+  ];
+
+  const renderCategoryChip = (category: typeof categories[0]) => {
+    const isSelected = category.id === selectedCategory;
     return (
       <TouchableOpacity
-        key={category}
+        key={category.id}
         style={[
           styles.categoryChip,
           { 
             backgroundColor: isSelected ? colors.primary : colors.surface,
             borderColor: isSelected ? colors.primary : colors.border,
+            paddingHorizontal: deviceType === 'mobile' ? 12 : 16,
+            paddingVertical: deviceType === 'mobile' ? 8 : 10,
           }
         ]}
-        onPress={() => {
-          setSelectedCategory(category);
-          analyticsService.trackEvent('resource_category_selected', { category });
-        }}
+        onPress={() => setSelectedCategory(category.id as ResourceCategory)}
       >
+        <Text style={styles.categoryEmoji}>{category.icon}</Text>
         <Text
           style={[
             styles.categoryChipText,
-            { color: isSelected ? 'white' : colors.text }
+            { 
+              color: isSelected ? 'white' : colors.text,
+              fontSize: deviceType === 'mobile' ? 14 : 15,
+            }
           ]}
         >
-          {category}
+          {category.label}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  const renderResourceItem = ({ item }: { item: ResourceItem }) => (
-    <TouchableOpacity
+  const renderResourceItem = ({ item }: { item: any }) => (
+    <View
+      key={item.id}
       style={[
         styles.resourceItem,
         { 
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          width: deviceType === 'mobile' ? '100%' : `${100 / numColumns - 2}%`,
+          width: deviceType === 'mobile' ? '100%' : '48%',
         }
       ]}
-      onPress={() => {
-        analyticsService.trackUserAction('resource_opened', 'resources', {
-          resource_id: item.id,
-          resource_name: item.name,
-          resource_type: item.type
-        });
-        console.log(`Open ${item.name}`);
-      }}
     >
       {item.previewUrl ? (
         <Image source={{ uri: item.previewUrl }} style={styles.resourceThumbnail} />
@@ -406,19 +542,17 @@ export default function ResourcesScreen() {
             style={[
               styles.verifyButton,
               { 
-                backgroundColor: user?.isPremium ? colors.primary + '20' : colors.disabled + '20',
-                borderColor: user?.isPremium ? colors.primary : colors.disabled,
+                backgroundColor: colors.primary + '20',
+                borderColor: colors.primary,
               }
             ]}
             onPress={() => handleVerifyOnBlockchain(item.id)}
             disabled={verifyingDocument === item.id}
           >
-            {!user?.isPremium && <Crown size={12} color={colors.disabled} />}
             <Text style={[
               styles.verifyButtonText, 
               { 
-                color: user?.isPremium ? colors.primary : colors.disabled,
-                marginLeft: !user?.isPremium ? 4 : 0
+                color: colors.primary
               }
             ]}>
               {verifyingDocument === item.id ? 'Verifying...' : 'Verify on Blockchain'}
@@ -435,12 +569,12 @@ export default function ResourcesScreen() {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.content, { paddingHorizontal: padding, maxWidth, alignSelf: 'center', width: '100%' }]}>
+      <View style={[styles.content, { paddingHorizontal: padding, maxWidth: 1000, alignSelf: 'center', width: '100%' }]}>
         <View style={styles.header}>
           <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Search size={20} color={colors.textSecondary} />
@@ -468,7 +602,7 @@ export default function ResourcesScreen() {
           <FlatList
             data={categories}
             renderItem={({ item }) => renderCategoryChip(item)}
-            keyExtractor={(item) => item}
+            keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesList}
@@ -486,10 +620,10 @@ export default function ResourcesScreen() {
             data={filteredResources}
             renderItem={renderResourceItem}
             keyExtractor={(item) => item.id}
-            numColumns={numColumns}
-            key={numColumns}
+            numColumns={deviceType === 'mobile' ? 1 : 2}
+            key={deviceType === 'mobile' ? 'single' : 'double'}
             contentContainerStyle={styles.resourcesList}
-            columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
+            columnWrapperStyle={deviceType !== 'mobile' ? styles.row : undefined}
           />
         )}
         
@@ -520,11 +654,6 @@ export default function ResourcesScreen() {
           description="Take photos for insurance claims and recovery records"
         />
       </Modal>
-
-      <PaywallScreen 
-        visible={showPaywall} 
-        onClose={() => setShowPaywall(false)} 
-      />
       
       <BoltBadge />
     </SafeAreaView>
@@ -580,6 +709,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 8,
     borderWidth: 1,
+  },
+  categoryEmoji: {
+    fontSize: 16,
+    marginRight: 6,
   },
   categoryChipText: {
     fontWeight: '500',
