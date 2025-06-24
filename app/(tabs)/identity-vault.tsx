@@ -16,19 +16,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useResponsive } from '@/hooks/useResponsive';
 import { analyticsService } from '@/services/analyticsService';
-import { 
-  Shield, 
-  Lock, 
-  CheckCircle, 
-  Copy, 
-  ExternalLink, 
-  AlertTriangle,
-  User,
-  Phone,
-  MapPin,
-  FileText,
-  Clock
-} from 'lucide-react-native';
+import { Shield, Lock, CircleCheck as CheckCircle, Copy, ExternalLink, TriangleAlert as AlertTriangle, User, Phone, MapPin, FileText, Clock } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 interface UserRecoveryData {
