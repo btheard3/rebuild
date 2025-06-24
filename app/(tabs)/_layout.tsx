@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { analyticsService } from '@/services/analyticsService';
 import { useEffect } from 'react';
-import { Chrome as Home, Search, MapPin, Bell, User, Volume2, Trophy } from 'lucide-react-native';
+import { Chrome as Home, Search, MapPin, Bell, User, Volume2, Trophy, Shield } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { theme, colors } = useTheme();
@@ -75,6 +75,13 @@ export default function TabLayout() {
         options={{
           title: 'Progress',
           tabBarIcon: ({ color, size }) => <Trophy size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="identity-vault"
+        options={{
+          title: 'Identity',
+          tabBarIcon: ({ color, size }) => <Shield size={size} color={color} />,
         }}
       />
       <Tabs.Screen
