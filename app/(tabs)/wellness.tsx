@@ -13,7 +13,7 @@ import {
 import { useTheme } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { BookOpen, Clock, ChartBar as BarChart3, Heart } from 'lucide-react-native';
+import { BookOpen, Clock, ChartBar as BarChart3, Heart, Video as VideoIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BoltBadge from '@/components/BoltBadge';
 import { analyticsService } from '@/services/analyticsService';
@@ -133,6 +133,15 @@ export default function WellnessScreen() {
       color: '#3B82F6',
       route: '/wellness/mood-tracking',
       about: 'Tracking your mood helps identify patterns and triggers. Visualize your emotional journey and celebrate improvements over time.'
+    },
+    {
+      id: 'video-checkin',
+      title: 'AI Video Check-in',
+      description: 'Personalized video support messages',
+      icon: VideoIcon,
+      color: '#EF4444',
+      route: '/(tabs)/video-checkin',
+      about: 'Transform your journal entries into personalized video messages. Our AI creates supportive videos tailored to your emotional needs.'
     }
   ];
 
