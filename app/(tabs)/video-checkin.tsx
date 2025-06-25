@@ -126,7 +126,7 @@ export default function VideoCheckinScreen() {
 
     try {
       const { data, error } = await supabase
-        .from('ai_video_checkins')
+        .from('video_logs')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'completed')
@@ -211,7 +211,7 @@ export default function VideoCheckinScreen() {
       const videoId = `video_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       // Save initial record to Supabase
-      await supabase.from('ai_video_checkins').insert([
+      await supabase.from('video_logs').insert([
         {
           user_id: user.id,
           video_id: videoId,
@@ -236,7 +236,7 @@ export default function VideoCheckinScreen() {
 
       // Update record in Supabase with video URL
       await supabase
-        .from('ai_video_checkins')
+        .from('video_logs')
         .update({
           video_url: videoUrl,
           status: 'completed',

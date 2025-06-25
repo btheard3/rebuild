@@ -61,7 +61,7 @@ export default function VideoHistoryScreen() {
 
     try {
       const { data, error } = await supabase
-        .from('ai_video_checkins')
+        .from('video_logs')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'completed')
@@ -96,7 +96,7 @@ export default function VideoHistoryScreen() {
             setIsDeleting(true);
             try {
               const { error } = await supabase
-                .from('ai_video_checkins')
+                .from('video_logs')
                 .delete()
                 .eq('id', videoId)
                 .eq('user_id', user.id);
@@ -179,6 +179,7 @@ export default function VideoHistoryScreen() {
 
     return (
       <TouchableOpacity
+        key={item.id}
         style={[
           styles.videoCard,
           {
@@ -434,9 +435,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   actionButtonText: {
+    marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
   },
   scriptContainer: {
     borderRadius: 12,
