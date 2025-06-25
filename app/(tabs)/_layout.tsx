@@ -71,6 +71,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="voice-checkin"
+        options={{
+          title: 'AI Voice',
+          tabBarIcon: ({ color, size }) => <Volume2 size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="identity-vault"
         options={{
           title: 'ID Vault',
