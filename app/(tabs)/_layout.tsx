@@ -78,6 +78,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="voice-checkin"
+        options={{
+          title: 'AI Voice',
+          tabBarIcon: ({ color, size }) => <Volume2 size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="alerts"
         options={{
           title: 'Alerts',
@@ -89,13 +96,6 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="voice-checkin"
-        options={{
-          title: 'AI Voice',
-          tabBarIcon: ({ color, size }) => <Volume2 size={size} color={color} />,
         }}
       />
       <Tabs.Screen
