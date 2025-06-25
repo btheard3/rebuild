@@ -110,12 +110,6 @@ export default function TabLayout() {
           href: null, // Hide from tab bar but keep accessible
         }}
       />
-      <Tabs.Screen
-        name="video-history"
-        options={{
-          href: null, // Hide from tab bar but keep accessible
-        }}
-      />
     </Tabs>
   );
 }

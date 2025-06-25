@@ -12,13 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronRight,
-  Moon,
-  Bell,
-  Lock,
-  CircleHelp as HelpCircle,
-  LogOut,
-  Contrast,
   Sparkles,
   Heart,
   Volume2,
@@ -28,15 +21,14 @@ import {
   Pause,
   RotateCcw,
 } from 'lucide-react-native';
-
-import { useTheme } from '@/context/ThemeContext';
-import { useAuth } from '@/context/AuthContext';
-import { analyticsService } from '@/services/analyticsService';
 import { openaiService } from '@/services/openaiService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { supabaseService } from '@/services/supabaseService';
-import { router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { analyticsService } from '@/services/analyticsService';
 import BoltBadge from '@/components/BoltBadge';
+import { router } from 'expo-router';
 
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
 
