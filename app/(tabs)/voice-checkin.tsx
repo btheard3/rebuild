@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,21 +11,38 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Pause, RotateCcw, Sparkles, Heart, Volume2, TriangleAlert as AlertTriangle, ArrowLeft } from 'lucide-react-native';
+import {
+  ChevronRight,
+  Moon,
+  Bell,
+  Lock,
+  CircleHelp as HelpCircle,
+  LogOut,
+  Contrast,
+  Sparkles,
+  Heart,
+  Volume2,
+  TriangleAlert as AlertTriangle,
+  ArrowLeft,
+  Play,
+  Pause,
+  RotateCcw,
+} from 'lucide-react-native';
+
+import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { analyticsService } from '@/services/analyticsService';
 import { openaiService } from '@/services/openaiService';
 import { elevenLabsService } from '@/services/elevenLabsService';
 import { supabaseService } from '@/services/supabaseService';
-import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
-import { analyticsService } from '@/services/analyticsService';
-import BoltBadge from '@/components/BoltBadge';
 import { router } from 'expo-router';
+import BoltBadge from '@/components/BoltBadge';
 
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
 
 export default function VoiceCheckinScreen() {
-  const { user } = useAuth();
   const { colors } = useTheme();
+  const { user } = useAuth();
 
   const [journalEntry, setJournalEntry] = useState('');
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
@@ -44,6 +61,10 @@ export default function VoiceCheckinScreen() {
       { id: 'stressed', emoji: '😰', label: 'Stressed', color: '#EF4444' },
       { id: 'anxious', emoji: '😟', label: 'Anxious', color: '#F97316' },
     ];
+
+  useEffect(() => {
+    analyticsService.trackScreen('voice_checkin');
+  }, []);
 
   const generateScript = async () => {
     if (!journalEntry.trim()) {
