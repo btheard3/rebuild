@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  ArrowLeft,
   Sparkles,
   Heart,
   Volume2,
   TriangleAlert as AlertTriangle,
-  ArrowLeft,
   Play,
   Pause,
   RotateCcw,
@@ -33,8 +33,8 @@ import { router } from 'expo-router';
 type MoodType = 'great' | 'good' | 'okay' | 'sad' | 'stressed' | 'anxious';
 
 export default function VoiceCheckinScreen() {
-  const { colors } = useTheme();
   const { user } = useAuth();
+  const { colors } = useTheme();
 
   const [journalEntry, setJournalEntry] = useState('');
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
