@@ -36,7 +36,14 @@
     "clean": "expo r -c",
     "prebuild": "expo prebuild",
     "create-alert": "node scripts/create-test-alert.js",
-    "postinstall": "expo install --fix"
+    "postinstall": "expo install --fix",
+    "deploy": "eas build --platform android",
+    "deploy:preview": "eas build --profile preview --platform android",
+    "deploy:ios": "eas build --platform ios",
+    "deploy:all": "eas build --platform all",
+    "publish": "eas update",
+    "submit:android": "eas submit --platform android",
+    "submit:ios": "eas submit --platform ios"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",

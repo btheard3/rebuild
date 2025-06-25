@@ -29,10 +29,18 @@
       },
       "android": {
         "buildType": "apk"
-      }
+      },
+      "autoIncrement": true
     }
   },
   "submit": {
     "production": {}
+  },
+  "preview": {
+    "distribution": "internal",
+    "channel": "preview"
+  },
+  "production": {
+    "channel": "production"
   }
 }
