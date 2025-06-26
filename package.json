@@ -33,7 +33,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "clean": "expo r -c",
+    "clean": "expo start -c",
     "prebuild": "expo prebuild",
     "create-alert": "node scripts/create-test-alert.js",
     "postinstall": "expo install --fix",
