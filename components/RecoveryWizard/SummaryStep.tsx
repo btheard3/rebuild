@@ -6,6 +6,7 @@ import { useResponsive, getResponsiveValue } from '@/hooks/useResponsive';
 import { useWizard } from './WizardContext';
 import { analyticsService } from '@/services/analyticsService';
 import { openaiService } from '@/services/openaiService';
+import { supabaseService } from '@/services/supabaseService';
 import { FileText, Share as ShareIcon, Download, CircleCheck as CheckCircle, Sparkles } from 'lucide-react-native';
 
 export default function SummaryStep() {
@@ -43,30 +44,15 @@ export default function SummaryStep() {
   
   const saveRecoveryPlan = async () => {
     try {
-      const apiUrl = '/api/recovery-plan';
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id,
-          planData: {
-            ...data,
-            aiRecommendations, // Include AI-generated recommendations
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        // If response is not ok, read as text to get the actual error message
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`Server error (${response.status}): ${response.statusText}`);
+      if (!user?.id) {
+        throw new Error('User not authenticated');
       }
 
-      const result = await response.json();
+      const result = await supabaseService.saveRecoveryPlanToDb({
+        userId: user.id,
+        planData: data,
+        aiRecommendations
+      });
       
       if (result.success) {
         analyticsService.trackEvent('recovery_plan_saved', {
@@ -77,8 +63,6 @@ export default function SummaryStep() {
         });
         
         console.log('Recovery plan saved successfully:', result);
-      } else {
-        console.error('Failed to save recovery plan:', result.error);
       }
     } catch (error) {
       console.error('Error saving recovery plan:', error);
