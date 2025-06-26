@@ -57,6 +57,13 @@ export default function SummaryStep() {
         }),
       });
 
+      if (!response.ok) {
+        // If response is not ok, read as text to get the actual error message
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server error (${response.status}): ${response.statusText}`);
+      }
+
       const result = await response.json();
       
       if (result.success) {
