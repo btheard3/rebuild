@@ -1,4 +1,4 @@
-const { supabase } = require('../../services/supabaseClient');
+const { supabase } = require('./utils/supabaseClient');
 
 exports.handler = async (event, context) => {
   // Handle CORS

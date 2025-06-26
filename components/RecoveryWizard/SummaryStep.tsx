@@ -43,7 +43,9 @@ export default function SummaryStep() {
   
   const saveRecoveryPlan = async () => {
     try {
-      const response = await fetch('/api/recovery-plan', {
+      const apiUrl = '/.netlify/functions/recovery-plan';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
