@@ -45,7 +45,17 @@ export const openaiService = {
         const errorData = await response.json().catch(() => ({}));
         const error = new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`) as OpenAIError;
         error.status = response.status;
-        error.code = errorData.error?.code;
+
+        // Handle specific error cases
+        if (response.status === 401) {
+          error.message =
+            'Invalid OpenAI API key. Please check your configuration.';
+        } else if (response.status === 429) {
+          error.message = 'Rate limit exceeded. Please try again in a moment.';
+        } else if (response.status === 422) {
+          error.message = 'Invalid request. Please check your text input.';
+        }
+
         throw error;
       }
 

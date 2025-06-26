@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { supabase, checkSupabaseConnection } from '@/services/supabaseClient';
 import { ArrowLeft, CircleCheck as CheckCircle, Circle as XCircle, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import BoltBadge from '@/components/BoltBadge';
 
 export default function TestAuthScreen() {
   const { colors } = useTheme();
@@ -166,6 +167,7 @@ export default function TestAuthScreen() {
           </Text>
         </View>
       </ScrollView>
+      <BoltBadge />
     </SafeAreaView>
   );
 }
