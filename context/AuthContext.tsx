@@ -57,6 +57,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (error) throw error;
 
     if (data.user) {
+      // Create profile record to satisfy foreign key constraints
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          username: name,
+          avatar_url: null,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.error('Failed to create profile:', profileError);
+        throw new Error('Failed to create user profile');
+      }
+
       const newUser = {
         id: data.user.id,
         name,
@@ -85,6 +100,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (error) throw error;
 
     if (data.user) {
+      // Check if profile exists, create if it doesn't
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileCheckError && profileCheckError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { error: profileCreateError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            username: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+            avatar_url: null,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (profileCreateError) {
+          console.error('Failed to create profile on signin:', profileCreateError);
+        }
+      }
+
       const newUser = {
         id: data.user.id,
         name: data.user.user_metadata?.full_name || '',
@@ -279,6 +317,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await secureStoreAdapter.deleteItem('auth_token');
         setUser(null);
         return;
+      }
+
+      // Check if profile exists, create if it doesn't
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileCheckError && profileCheckError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { error: profileCreateError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            username: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+            avatar_url: null,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (profileCreateError) {
+          console.error('Failed to create profile on load:', profileCreateError);
+        }
       }
 
       const currentUser = {
