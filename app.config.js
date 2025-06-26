@@ -24,6 +24,7 @@ export default {
     web: {
       output: 'server',
       favicon: './assets/images/favicon.png',
+      bundler: 'metro'
     },
     extra: {
       // Expose environment variables to the app
@@ -32,6 +33,7 @@ export default {
       EXPO_PUBLIC_OPENAI_API_KEY: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      EXPO_ROUTER_APP_ROOT: "app"
     },
     plugins: [
       'expo-router',
