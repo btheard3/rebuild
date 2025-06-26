@@ -195,7 +195,7 @@ class ResourcesService {
     {
       id: '10',
       name: 'Disaster Unemployment Assistance',
-      description: 'Financial support for workers who lost their jobs due to a disaster and don't qualify for regular unemployment benefits.',
+      description: 'Financial support for workers who lost their jobs due to a disaster and don\'t qualify for regular unemployment benefits.',
       category: 'financial',
       type: 'program',
       contact: {
@@ -358,7 +358,7 @@ class ResourcesService {
     {
       id: '19',
       name: 'Disaster Medicaid',
-      description: 'Temporary medical coverage for individuals who don't normally qualify for Medicaid but have medical needs due to a disaster.',
+      description: 'Temporary medical coverage for individuals who don\'t normally qualify for Medicaid but have medical needs due to a disaster.',
       category: 'medical',
       type: 'program',
       contact: {
