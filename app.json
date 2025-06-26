@@ -20,9 +20,9 @@
       "package": "com.rebuild.disasterrecovery"
     },
     "web": {
-      "output": "server",
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
     "extra": {
       "eas": {

@@ -22,7 +22,7 @@ export default {
       package: 'com.rebuild.disasterrecovery',
     },
     web: {
-      output: 'server',
+      output: 'static',
       favicon: './assets/images/favicon.png',
       bundler: 'metro'
     },

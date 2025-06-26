@@ -1,6 +1,6 @@
 [build]
-  publish = "dist"
-  command = "npx expo export --platform web --output-dir dist"
+  publish = "web-build"
+  command = "npm run build:web"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -52,4 +52,4 @@
 [dev]
   command = "npm run dev"
   port = 8081
-  publish = "dist"
+  publish = "web-build"
