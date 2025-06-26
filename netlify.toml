@@ -1,6 +1,6 @@
 [build]
   publish = "dist"
-  command = "npx expo export --platform web --output-dir dist --experimental-bundle-server-routes"
+  command = "npx expo export --platform web --output-dir dist"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -46,7 +46,7 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 [functions]
-  directory = "dist/server/functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
 
 [dev]
