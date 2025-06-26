@@ -15,18 +15,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { analyticsService } from '@/services/analyticsService';
-import { 
-  AlertTriangle, 
-  ArrowLeft, 
-  Phone, 
-  MapPin, 
-  FileText, 
-  User, 
-  Heart, 
-  Shield, 
-  Clock,
-  Share as ShareIcon
-} from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, ArrowLeft, Phone, MapPin, FileText, User, Heart, Shield, Clock, Share as ShareIcon } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 interface EmergencyContact {

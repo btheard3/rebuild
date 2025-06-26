@@ -16,18 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import { analyticsService } from '@/services/analyticsService';
 import { identityVaultService } from '@/services/identityVaultService';
-import { 
-  ArrowLeft, 
-  FileText, 
-  Calendar, 
-  Shield, 
-  Download, 
-  Share as ShareIcon, 
-  Trash, 
-  ExternalLink, 
-  Copy, 
-  CheckCircle 
-} from 'lucide-react-native';
+import { ArrowLeft, FileText, Calendar, Shield, Download, Share as ShareIcon, Trash, ExternalLink, Copy, CircleCheck as CheckCircle } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 interface DocumentDetails {
