@@ -14,15 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { analyticsService } from '@/services/analyticsService';
 import { identityVaultService } from '@/services/identityVaultService';
-import { 
-  ArrowLeft, 
-  Shield, 
-  CheckCircle, 
-  Clock, 
-  ExternalLink, 
-  AlertTriangle,
-  Search
-} from 'lucide-react-native';
+import { ArrowLeft, Shield, CircleCheck as CheckCircle, Clock, ExternalLink, TriangleAlert as AlertTriangle, Search } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 
 interface VerificationRecord {
