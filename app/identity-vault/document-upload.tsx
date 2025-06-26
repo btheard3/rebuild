@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { analyticsService } from '@/services/analyticsService';
 import { identityVaultService } from '@/services/identityVaultService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { ArrowLeft, Upload, Camera, FileText, X, Image as ImageIcon, Shield } from 'lucide-react-native';
+import { ArrowLeft, Upload, Camera, FileText, X, Image as ImageIcon, Shield, User } from 'lucide-react-native';
 import BoltBadge from '@/components/BoltBadge';
 import CameraCapture from '@/components/CameraCapture';
 
