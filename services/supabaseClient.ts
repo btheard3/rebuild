@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import { analyticsService } from './analyticsService';
 
-// Expo requires these to be prefixed with EXPO_PUBLIC_ in .env
+// Get environment variables
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
