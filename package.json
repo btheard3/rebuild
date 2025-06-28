@@ -24,7 +24,7 @@
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
     "start": "expo start",
-    "build:web": "npx expo export",
+    "build:web": "npx expo export:web",
     "build:ios": "expo build:ios",
     "build:android": "expo build:android",
     "lint": "expo lint",
