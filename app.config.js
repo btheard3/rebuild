@@ -19,6 +19,7 @@ export default {
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.btheard.rebuild',
     },
     android: {
       package: 'com.btheard.rebuild',
