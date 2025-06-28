@@ -21,7 +21,6 @@ export default {
     platforms: ['ios', 'android', 'web'],
     web: {
       favicon: './assets/images/icon.png',
-      bundler: 'webpack', // 👈 Enable Webpack bundler for static HTML export
     },
     extra: {
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
