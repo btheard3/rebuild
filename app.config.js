@@ -1,6 +1,9 @@
 import 'dotenv/config';
 
 export default {
+  cli: {
+    appVersionSource: 'project',
+  },
   expo: {
     name: 'Rebuild',
     slug: 'rebuild-disaster-recovery',
