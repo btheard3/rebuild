@@ -24,7 +24,7 @@ export default {
     android: {
       package: 'com.btheard.rebuild',
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
+        foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#ffffff',
       },
     },
