@@ -37,7 +37,7 @@
     "prebuild": "expo prebuild",
     "create-alert": "node scripts/create-test-alert.js",
     "postinstall": "expo install --fix",
-    "deploy": "eas build --platform android",
+    "deploy": "eas build --platform android --profile production",
     "deploy:preview": "eas build --profile preview --platform android",
     "deploy:ios": "eas build --platform ios",
     "deploy:all": "eas build --platform all",
