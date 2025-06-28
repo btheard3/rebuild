@@ -7,7 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "rebuild",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rebuild.disasterrecovery"
@@ -38,7 +42,8 @@
       "expo-document-picker",
       "expo-file-system",
       "expo-secure-store",
-      "expo-av"
+      "expo-av",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
