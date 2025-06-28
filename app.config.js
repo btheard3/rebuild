@@ -35,6 +35,10 @@ export default {
       eas: {
         projectId: '9517aa5e-0ac4-4c01-8bf7-5358034f8e98',
       },
+      openaiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+      elevenlabsKey: process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     },
   },
 };
