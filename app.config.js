@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   expo: {
     name: 'Rebuild',
-    slug: 'rebuild',
+    slug: 'rebuild-disaster-recovery',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
