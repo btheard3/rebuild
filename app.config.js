@@ -2,53 +2,34 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'Rebuild - Disaster Recovery',
-    slug: 'rebuild-disaster-recovery',
+    name: 'Rebuild',
+    slug: 'rebuild',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
-    scheme: 'rebuild',
-    userInterfaceStyle: 'automatic',
-    platforms: ['ios', 'android', 'web'],
+    icon: './assets/icon.png',
+    userInterfaceStyle: 'light',
+    splash: {
+      image: './assets/splash.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
+    assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.rebuild.disasterrecovery',
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/images/icon.png',
-        backgroundColor: '#2563EB',
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#ffffff',
       },
-      package: 'com.rebuild.disasterrecovery',
     },
     web: {
-      output: 'static',
-      favicon: './assets/images/favicon.png',
-      bundler: 'metro'
+      favicon: './assets/favicon.png',
     },
     extra: {
-      // Expose environment variables to the app
-      EXPO_PUBLIC_ELEVENLABS_API_KEY:
-        process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
-      EXPO_PUBLIC_OPENAI_API_KEY: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
-      EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      EXPO_ROUTER_APP_ROOT: "app"
+      eas: {
+        projectId: '9517aa5e-0ac4-4c01-8bf7-5358034f8e98',
+      },
     },
-    plugins: [
-      'expo-router',
-      'expo-font',
-      'expo-web-browser',
-      'expo-camera',
-      'expo-document-picker',
-      'expo-file-system',
-      'expo-secure-store',
-      'expo-av', // Added for audio playback
-    ],
-    experiments: {
-      typedRoutes: true,
-    },
-    description:
-      'A comprehensive disaster recovery application with AI-powered tools, secure document storage, and personalized support.',
   },
 };
